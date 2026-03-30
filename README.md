@@ -1,25 +1,25 @@
 # EXAI Research Interview
 
-Streamlit-інтерв’ю з блоками з `content/research_blocks.json`, scoping-агенти A11–A22 і канонічні питання з корпусу.
+Streamlit app for structured expert interviews using `content/research_blocks.json`, scoping agents A11–A22, and canonical questions from the JSON corpus.
 
-## Локально
+## Local setup
 
 ```bash
 cd EXAI_Agents
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env        # додайте OPENROUTER_API_KEY
+cp .env.example .env        # add OPENROUTER_API_KEY
 export PYTHONPATH=.
 streamlit run app.py
 ```
 
-Або без API: у сайдбарі увімкніть **Mock LLM** або `EXAI_MOCK_LLM=1`.
+Without an API key: enable **Mock LLM** in the sidebar or set `EXAI_MOCK_LLM=1`.
 
 ## GitHub
 
-1. Створіть порожній репозиторій на GitHub (без README, якщо вже є локально).
-2. У каталозі проєкту:
+1. Create an empty repository on GitHub (no README if you already have one locally).
+2. In the project directory:
 
 ```bash
 git init
@@ -30,17 +30,17 @@ git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
 git push -u origin main
 ```
 
-Переконайтеся, що **не** потрапили у коміт: `.env`, `.streamlit/secrets.toml` (вони в `.gitignore`).
+Do not commit `.env` or `.streamlit/secrets.toml` (they are listed in `.gitignore`).
 
 ## Streamlit Community Cloud
 
-1. Увійдіть на [share.streamlit.io](https://share.streamlit.io), підключіть GitHub, **Deploy an app**.
-2. **Repository** — ваш репозиторій, **Main file path**: `app.py`, **Branch**: `main`.
-3. **Advanced settings** → **Secrets** — вставте TOML (приклад нижче) і збережіть.
+1. Sign in at [share.streamlit.io](https://share.streamlit.io), connect GitHub, **Deploy an app**.
+2. **Repository** — your repo, **Main file path**: `app.py`, **Branch**: `main`.
+3. **Advanced settings** → **Secrets** — paste TOML (example below), save.
 
-### Формат Secrets
+### Secrets format
 
-Використовується [OpenRouter](https://openrouter.ai) (OpenAI-сумісний API).
+Uses [OpenRouter](https://openrouter.ai) (OpenAI-compatible API).
 
 ```toml
 OPENROUTER_API_KEY = "sk-or-v1-..."
@@ -48,14 +48,14 @@ OPENROUTER_MODEL = "openai/gpt-4o-mini"
 EXAI_MOCK_LLM = "0"
 ```
 
-- `OPENROUTER_API_KEY` — обов’язково для реальних викликів (ключ з кабінету OpenRouter).
-- `OPENROUTER_MODEL` — ідентифікатор моделі на OpenRouter (наприклад `openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`).
-- Опційно: `OPENROUTER_BASE_URL`, `OPENROUTER_HTTP_REFERER`, `OPENROUTER_X_TITLE` (атрибуція за [документацією OpenRouter](https://openrouter.ai/docs)).
-- `EXAI_MOCK_LLM` — опційно; `"1"` увімкне заглушки без API (для тесту деплою).
+- `OPENROUTER_API_KEY` — required for live model calls (from the OpenRouter dashboard).
+- `OPENROUTER_MODEL` — optional OpenRouter model id (e.g. `openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`).
+- Optional: `OPENROUTER_BASE_URL`, `OPENROUTER_HTTP_REFERER`, `OPENROUTER_X_TITLE` per [OpenRouter docs](https://openrouter.ai/docs).
+- `EXAI_MOCK_LLM` — optional; `"1"` enables stubs without the API (useful to test deploy).
 
-Після збереження secrets натисніть **Reboot app**, якщо додаток уже був запущений.
+After saving secrets, **Reboot app** if it was already running.
 
-## Тести
+## Tests
 
 ```bash
 PYTHONPATH=. pytest tests/ -q

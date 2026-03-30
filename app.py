@@ -33,7 +33,7 @@ load_dotenv()
 
 
 def _apply_streamlit_secrets_to_env() -> None:
-    """Streamlit Community Cloud: copy st.secrets into os.environ for OpenAI client."""
+    """Streamlit Community Cloud: copy st.secrets into os.environ for the OpenRouter client."""
     try:
         sec = st.secrets
     except (RuntimeError, AttributeError):
@@ -59,9 +59,9 @@ def _apply_streamlit_secrets_to_env() -> None:
 validate_research_blocks()
 
 STEP_LABELS = {
-    "general": "Шаг 1 (Общее)",
-    "deepening": "Шаг 2 (Углубление)",
-    "drilling": "Шаг 3 (Drilling)",
+    "general": "Step 1 (General)",
+    "deepening": "Step 2 (Deepening)",
+    "drilling": "Step 3 (Drilling)",
 }
 
 
@@ -72,7 +72,7 @@ def _runner() -> AgentRunner:
 
 
 def _lang_hint() -> str:
-    return st.session_state.get("ui_language", "Ukrainian")
+    return "English"
 
 
 def _reset_interview(block_id: int, use_preset: bool) -> None:
@@ -190,7 +190,7 @@ def _format_canonical_message(block: dict, phase_index: int, step_index: int) ->
     q = canonical_question_text(block, phase_index, step_index)
     label = STEP_LABELS[sk]
     return (
-        f"**Фаза: {ph['title']}**\n\n"
+        f"**Phase: {ph['title']}**\n\n"
         f"_{label}_\n\n"
         f"{q}"
     )
@@ -294,7 +294,7 @@ def _end_interview_early() -> None:
 
 
 def _init_setup_model_widgets_once() -> None:
-    """Початкові значення вибору моделі (з OPENROUTER_MODEL / secrets, якщо є)."""
+    """One-time defaults for model widgets from OPENROUTER_MODEL / secrets."""
     if st.session_state.get("_setup_model_widgets_ready"):
         return
     env_mid = os.getenv("OPENROUTER_MODEL", "").strip()
@@ -315,8 +315,6 @@ def init_session_defaults() -> None:
         st.session_state.messages = []
     if "interview_started" not in st.session_state:
         st.session_state.interview_started = False
-    if "ui_language" not in st.session_state:
-        st.session_state.ui_language = "Ukrainian"
     if "score_threshold" not in st.session_state:
         st.session_state.score_threshold = DEFAULT_SCORE_THRESHOLD
     if "openrouter_model_id" not in st.session_state:
@@ -329,60 +327,56 @@ def main() -> None:
     st.set_page_config(page_title="EXAI Research Interview", layout="wide")
     init_session_defaults()
 
-    st.sidebar.title("Налаштування")
+    st.sidebar.title("Settings")
     st.session_state.mock_llm = st.sidebar.checkbox(
-        "Mock LLM (без API)",
+        "Mock LLM (no API calls)",
         value=os.getenv("EXAI_MOCK_LLM", "0").lower() in ("1", "true", "yes"),
     )
-    st.session_state.ui_language = st.sidebar.selectbox(
-        "Мова відповідей асистента",
-        ["Ukrainian", "Russian", "English"],
-    )
     st.session_state.score_threshold = st.sidebar.number_input(
-        "Поріг purpose/focus та scope (діаграма)",
+        "Purpose/focus and scope agreement threshold (diagram)",
         min_value=0.5,
         max_value=1.0,
         value=float(st.session_state.score_threshold),
         step=0.05,
     )
     if st.session_state.interview_started:
-        st.sidebar.caption(f"**Модель:** `{st.session_state.get('openrouter_model_id', '')}`")
+        st.sidebar.caption(f"**Model:** `{st.session_state.get('openrouter_model_id', '')}`")
 
     summaries = list_blocks_summary()
     labels = [f"{bid}. {title}" for bid, title, _ in summaries]
     ids = [bid for bid, _, _ in summaries]
 
-    st.title("Інтерв’ю за дослідницькими блоками")
+    st.title("Research-block expert interview")
     st.caption(
-        "Скоупінг за схемою A14–A22; канонічні питання — дослівно з корпусу (JSON)."
+        "Scoping flow A14–A22; canonical questions are taken verbatim from the JSON corpus."
     )
 
     if not st.session_state.interview_started:
-        st.subheader("Крок 1: модель OpenRouter")
+        st.subheader("Step 1: OpenRouter model")
         if st.session_state.get("mock_llm"):
-            st.info("Увімкнено **Mock LLM** — модель не викликається до початку інтерв’ю.")
+            st.info("**Mock LLM** is on — the remote model is not called until you start the interview.")
         presets = RECOMMENDED_OPENROUTER_MODELS
         st.selectbox(
-            "Оптимальні моделі для діалогу та JSON-аналізу",
+            "Recommended models for dialogue and JSON-style scoring",
             range(len(presets)),
             format_func=lambda i: f"{presets[i][1]} — `{presets[i][0]}`",
             key="setup_model_preset_index",
         )
         st.text_input(
-            "Власний ID моделі (якщо заповнено — має пріоритет над списком)",
+            "Custom model ID (if set, overrides the list above)",
             key="setup_custom_openrouter_id",
-            placeholder="наприклад anthropic/claude-3.7-sonnet",
+            placeholder="e.g. anthropic/claude-3.7-sonnet",
         )
         custom_raw = (st.session_state.get("setup_custom_openrouter_id") or "").strip()
         chosen_model = custom_raw if custom_raw else presets[st.session_state.setup_model_preset_index][0]
 
-        st.subheader("Крок 2: блок дослідження")
-        choice = st.selectbox("Оберіть блок", range(len(labels)), format_func=lambda i: labels[i])
+        st.subheader("Step 2: research block")
+        choice = st.selectbox("Choose block", range(len(labels)), format_func=lambda i: labels[i])
         use_preset = st.checkbox(
-            "Тема пресет з блоку (A14). Вимкніть для узгодження теми (A15).",
+            "Use block title as preset topic (A14). Uncheck to negotiate topic first (A15).",
             value=True,
         )
-        if st.button("Почати інтерв’ю", type="primary"):
+        if st.button("Start interview", type="primary"):
             st.session_state.openrouter_model_id = chosen_model
             st.session_state.interview_started = True
             _reset_interview(ids[choice], use_preset)
@@ -392,7 +386,7 @@ def main() -> None:
     block = get_block_by_id(st.session_state.block_id)
     flow = st.session_state.flow
 
-    if st.sidebar.button("Скинути інтерв’ю"):
+    if st.sidebar.button("Reset interview"):
         st.session_state.interview_started = False
         st.session_state.messages = []
         st.session_state.flow = FlowState(main_phase=MainPhase.SETUP)
@@ -410,23 +404,23 @@ def main() -> None:
     if flow.main_phase == MainPhase.POST_A21_CHOICE and st.session_state.get("post_a21_shown"):
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("Продовжити до канонічних питань", type="primary"):
+            if st.button("Continue to canonical questions", type="primary"):
                 st.session_state.post_a21_shown = False
                 _start_canonical_from_choice()
                 st.rerun()
         with c2:
-            if st.button("Завершити інтерв’ю (A11)"):
+            if st.button("End interview (A11)"):
                 st.session_state.post_a21_shown = False
                 _end_interview_early()
                 st.rerun()
-        st.caption("Оберіть дію кнопками вище, щоб продовжити.")
+        st.caption("Use the buttons above to continue.")
         return
 
     if flow.main_phase == MainPhase.DONE:
-        st.info("Сесію завершено.")
+        st.info("Session completed.")
         return
 
-    if prompt := st.chat_input("Ваша відповідь…"):
+    if prompt := st.chat_input("Your message…"):
         if flow.main_phase == MainPhase.SCOPING:
             _handle_scoping_user_message(prompt)
         elif flow.main_phase == MainPhase.CANONICAL:

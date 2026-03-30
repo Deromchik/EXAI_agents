@@ -282,7 +282,7 @@ class AgentRunner:
             return self._mock_depth(user_answer)
         user = (
             f"Language: {language_hint}\n"
-            f"Canonical question (Russian):\n{canonical_question}\n"
+            f"Canonical question (fixed):\n{canonical_question}\n"
             f"Conversation (excerpt):\n{_format_history(messages[-12:])}\n"
             f"User answer:\n{user_answer}"
         )
