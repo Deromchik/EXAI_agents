@@ -37,29 +37,62 @@ def _extract_json_object(text: str) -> dict[str, Any]:
     raise ValueError(f"No JSON object in model output: {text[:200]}...")
 
 
+DEFAULT_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini"
+
+
+def _openrouter_extra_headers() -> dict[str, str]:
+    """Optional attribution headers for OpenRouter (https://openrouter.ai/docs)."""
+    h: dict[str, str] = {}
+    referer = os.getenv("OPENROUTER_HTTP_REFERER", "").strip()
+    title = os.getenv("OPENROUTER_X_TITLE", "").strip()
+    if referer:
+        h["HTTP-Referer"] = referer
+    if title:
+        h["X-Title"] = title
+    return h
+
+
 class AgentRunner:
     def __init__(self, mock: bool | None = None, model: str | None = None):
         if mock is None:
             mock = os.getenv("EXAI_MOCK_LLM", "0").lower() in ("1", "true", "yes")
         self.mock = mock
-        self.model = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.model = (
+            model
+            or os.getenv("OPENROUTER_MODEL", "").strip()
+            or os.getenv("OPENAI_MODEL", "").strip()
+            or DEFAULT_OPENROUTER_MODEL
+        )
         self._client = None
         if not self.mock and OpenAI is not None:
-            self._client = OpenAI()
+            api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+            base_url = os.getenv("OPENROUTER_BASE_URL", DEFAULT_OPENROUTER_BASE).strip().rstrip("/")
+            if api_key:
+                self._client = OpenAI(base_url=base_url, api_key=api_key)
+            else:
+                self._client = None
 
     def _complete(self, system: str, user: str) -> str:
         if self.mock:
             return ""
         if not self._client:
-            raise RuntimeError("OpenAI client unavailable; set EXAI_MOCK_LLM=1 or install openai and set OPENAI_API_KEY")
-        r = self._client.chat.completions.create(
-            model=self.model,
-            messages=[
+            raise RuntimeError(
+                "LLM client unavailable: set OPENROUTER_API_KEY (OpenRouter) "
+                "or enable EXAI_MOCK_LLM=1 / Mock LLM in the sidebar."
+            )
+        extra_headers = _openrouter_extra_headers()
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            temperature=0.4,
-        )
+            "temperature": 0.4,
+        }
+        if extra_headers:
+            kwargs["extra_headers"] = extra_headers
+        r = self._client.chat.completions.create(**kwargs)
         return (r.choices[0].message.content or "").strip()
 
     # --- Mock heuristics -------------------------------------------------

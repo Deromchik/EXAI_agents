@@ -39,7 +39,15 @@ def _apply_streamlit_secrets_to_env() -> None:
         return
     if sec is None:
         return
-    for key in ("OPENAI_API_KEY", "OPENAI_MODEL", "EXAI_MOCK_LLM"):
+    for key in (
+        "OPENROUTER_API_KEY",
+        "OPENROUTER_MODEL",
+        "OPENROUTER_BASE_URL",
+        "OPENROUTER_HTTP_REFERER",
+        "OPENROUTER_X_TITLE",
+        "OPENAI_MODEL",
+        "EXAI_MOCK_LLM",
+    ):
         if key in sec:
             val = sec[key]
             if val is not None and str(val).strip():

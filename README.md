@@ -9,7 +9,7 @@ cd EXAI_Agents
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env        # додайте OPENAI_API_KEY
+cp .env.example .env        # додайте OPENROUTER_API_KEY
 export PYTHONPATH=.
 streamlit run app.py
 ```
@@ -40,14 +40,17 @@ git push -u origin main
 
 ### Формат Secrets
 
+Використовується [OpenRouter](https://openrouter.ai) (OpenAI-сумісний API).
+
 ```toml
-OPENAI_API_KEY = "sk-..."
-OPENAI_MODEL = "gpt-4o-mini"
+OPENROUTER_API_KEY = "sk-or-v1-..."
+OPENROUTER_MODEL = "openai/gpt-4o-mini"
 EXAI_MOCK_LLM = "0"
 ```
 
-- `OPENAI_API_KEY` — обов’язково для реальних викликів моделі.
-- `OPENAI_MODEL` — опційно (за замовчуванням у коді `gpt-4o-mini`).
+- `OPENROUTER_API_KEY` — обов’язково для реальних викликів (ключ з кабінету OpenRouter).
+- `OPENROUTER_MODEL` — ідентифікатор моделі на OpenRouter (наприклад `openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`).
+- Опційно: `OPENROUTER_BASE_URL`, `OPENROUTER_HTTP_REFERER`, `OPENROUTER_X_TITLE` (атрибуція за [документацією OpenRouter](https://openrouter.ai/docs)).
 - `EXAI_MOCK_LLM` — опційно; `"1"` увімкне заглушки без API (для тесту деплою).
 
 Після збереження secrets натисніть **Reboot app**, якщо додаток уже був запущений.
