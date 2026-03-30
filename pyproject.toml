@@ -1,0 +1,17 @@
+[project]
+name = "exai-agents"
+version = "0.1.0"
+description = "Streamlit research interview with scoping agents"
+requires-python = ">=3.10"
+dependencies = [
+  "streamlit>=1.28.0",
+  "openai>=1.40.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

@@ -1,0 +1,26 @@
+from state_machine import advance_canonical_position, resolve_phase_indices_from_scope_areas
+
+
+def test_advance_subset_phases():
+    block = {
+        "phases": [
+            {"title": "P0", "steps": {"general": "a", "deepening": "b", "drilling": "c"}},
+            {"title": "P1", "steps": {"general": "d", "deepening": "e", "drilling": "f"}},
+            {"title": "P2", "steps": {"general": "g", "deepening": "h", "drilling": "i"}},
+        ]
+    }
+    sel = [0, 2]
+    assert advance_canonical_position(block, sel, 0, 0)[0] == "next_step"
+    assert advance_canonical_position(block, sel, 0, 2)[0] == "next_phase"
+    assert advance_canonical_position(block, sel, 1, 2)[0] == "finished_all"
+
+
+def test_resolve_scope_areas():
+    block = {
+        "phases": [
+            {"title": "Alpha phase", "steps": {"general": "x", "deepening": "y", "drilling": "z"}},
+            {"title": "Beta", "steps": {"general": "x", "deepening": "y", "drilling": "z"}},
+        ]
+    }
+    assert resolve_phase_indices_from_scope_areas(block, None) == [0, 1]
+    assert resolve_phase_indices_from_scope_areas(block, ["Beta"]) == [1]
