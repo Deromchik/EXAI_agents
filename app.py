@@ -9,6 +9,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 from agents.runner import AgentRunner
+from openrouter_presets import RECOMMENDED_OPENROUTER_MODELS, default_model_id
 from content.research_loader import (
     get_block_by_id,
     list_blocks_summary,
@@ -66,7 +67,8 @@ STEP_LABELS = {
 
 def _runner() -> AgentRunner:
     mock = st.session_state.get("mock_llm", os.getenv("EXAI_MOCK_LLM", "0").lower() in ("1", "true", "yes"))
-    return AgentRunner(mock=mock)
+    model = st.session_state.get("openrouter_model_id")
+    return AgentRunner(mock=mock, model=model)
 
 
 def _lang_hint() -> str:
@@ -291,6 +293,21 @@ def _end_interview_early() -> None:
     _append_assistant(_runner().run_a11(block, st.session_state.messages, _lang_hint()))
 
 
+def _init_setup_model_widgets_once() -> None:
+    """Початкові значення вибору моделі (з OPENROUTER_MODEL / secrets, якщо є)."""
+    if st.session_state.get("_setup_model_widgets_ready"):
+        return
+    env_mid = os.getenv("OPENROUTER_MODEL", "").strip()
+    ids = [p[0] for p in RECOMMENDED_OPENROUTER_MODELS]
+    if env_mid in ids:
+        st.session_state.setup_model_preset_index = ids.index(env_mid)
+    else:
+        st.session_state.setup_model_preset_index = 0
+        if env_mid:
+            st.session_state.setup_custom_openrouter_id = env_mid
+    st.session_state._setup_model_widgets_ready = True
+
+
 def init_session_defaults() -> None:
     if "flow" not in st.session_state:
         st.session_state.flow = FlowState(main_phase=MainPhase.SETUP)
@@ -302,6 +319,9 @@ def init_session_defaults() -> None:
         st.session_state.ui_language = "Ukrainian"
     if "score_threshold" not in st.session_state:
         st.session_state.score_threshold = DEFAULT_SCORE_THRESHOLD
+    if "openrouter_model_id" not in st.session_state:
+        st.session_state.openrouter_model_id = default_model_id()
+    _init_setup_model_widgets_once()
 
 
 def main() -> None:
@@ -325,6 +345,8 @@ def main() -> None:
         value=float(st.session_state.score_threshold),
         step=0.05,
     )
+    if st.session_state.interview_started:
+        st.sidebar.caption(f"**Модель:** `{st.session_state.get('openrouter_model_id', '')}`")
 
     summaries = list_blocks_summary()
     labels = [f"{bid}. {title}" for bid, title, _ in summaries]
@@ -336,12 +358,32 @@ def main() -> None:
     )
 
     if not st.session_state.interview_started:
+        st.subheader("Крок 1: модель OpenRouter")
+        if st.session_state.get("mock_llm"):
+            st.info("Увімкнено **Mock LLM** — модель не викликається до початку інтерв’ю.")
+        presets = RECOMMENDED_OPENROUTER_MODELS
+        st.selectbox(
+            "Оптимальні моделі для діалогу та JSON-аналізу",
+            range(len(presets)),
+            format_func=lambda i: f"{presets[i][1]} — `{presets[i][0]}`",
+            key="setup_model_preset_index",
+        )
+        st.text_input(
+            "Власний ID моделі (якщо заповнено — має пріоритет над списком)",
+            key="setup_custom_openrouter_id",
+            placeholder="наприклад anthropic/claude-3.7-sonnet",
+        )
+        custom_raw = (st.session_state.get("setup_custom_openrouter_id") or "").strip()
+        chosen_model = custom_raw if custom_raw else presets[st.session_state.setup_model_preset_index][0]
+
+        st.subheader("Крок 2: блок дослідження")
         choice = st.selectbox("Оберіть блок", range(len(labels)), format_func=lambda i: labels[i])
         use_preset = st.checkbox(
             "Тема пресет з блоку (A14). Вимкніть для узгодження теми (A15).",
             value=True,
         )
         if st.button("Почати інтерв’ю", type="primary"):
+            st.session_state.openrouter_model_id = chosen_model
             st.session_state.interview_started = True
             _reset_interview(ids[choice], use_preset)
             st.rerun()
