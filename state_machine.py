@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-DEFAULT_SCORE_THRESHOLD = 0.9
+DEFAULT_SCORE_THRESHOLD = 0.5
 UNDERSTANDING_FLOOR = 0.7
 
 STEP_ORDER = ("general", "deepening", "drilling")
