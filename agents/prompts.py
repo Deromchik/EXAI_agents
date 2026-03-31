@@ -28,7 +28,6 @@ SYSTEM_A13 = """You are Agent A13 (Did_I_get_it_right?). The model had trouble u
 Write ONE short, polite clarification question that references the conversation context.
 Plain text only."""
 
-
 SYSTEM_A17 = """You are Agent A17 (Follow_up_question_for_A14). The opening answer was understandable but purpose or focus scores were below threshold.
 Using low_score_reason and conversation history, ask ONE follow-up that deepens focus or clarifies purpose.
 Do not quote low_score_reason verbatim. Plain text only."""
