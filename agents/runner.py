@@ -6,8 +6,6 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from state_machine import collect_planned_questions_for_phases
-
 from . import prompts
 
 try:
@@ -233,14 +231,25 @@ class AgentRunner:
         phase_indices: list[int],
         language_hint: str,
     ) -> str:
-        planned = collect_planned_questions_for_phases(block, phase_indices)
-        numbered = "\n".join(f"{i + 1}. {q}" for i, (_, _, q) in enumerate(planned))
+        titles = [block["phases"][i]["title"] for i in phase_indices]
         user = (
             f"Language: {language_hint}\n"
-            f"Exact canonical questions to include verbatim:\n{numbered}\n"
-            "Build the user-facing message per instructions."
+            f"Block title: {block['title']}\n"
+            f"Phases the user agreed to cover (in order): {titles}\n"
+            "Write the short transition per system instructions. Do not list interview questions."
         )
         return self._complete("A21", prompts.SYSTEM_A21, user, language_hint)
+
+    def localize_canonical_question(self, source_question: str, language_hint: str) -> str:
+        lang = (language_hint or "English").strip() or "English"
+        if lang.lower() == "english":
+            return source_question.strip()
+        user = (
+            f"Mandatory response language: {lang}\n"
+            f"Source language of the corpus question: English\n"
+            f"Source question:\n{source_question.strip()}"
+        )
+        return self._complete("A22", prompts.SYSTEM_A22, user, language_hint)
 
     def run_a11(self, block: dict, messages: list[dict[str, str]], language_hint: str) -> str:
         user = f"Language: {language_hint}\nTopic: {block['title']}\nConversation:\n{_format_history(messages)}"

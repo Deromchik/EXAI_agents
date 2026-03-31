@@ -29,7 +29,6 @@ class ScopingWait(str, Enum):
 class MainPhase(str, Enum):
     SETUP = "setup"
     SCOPING = "scoping"
-    POST_A21_CHOICE = "post_a21_choice"
     CANONICAL = "canonical"
     DONE = "done"
 

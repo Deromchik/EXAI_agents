@@ -106,7 +106,6 @@ def _reset_interview(block_id: int, use_preset: bool) -> None:
     st.session_state.block_id = block_id
     st.session_state.use_preset = use_preset
     st.session_state.opening_generated = False
-    st.session_state.post_a21_shown = False
     st.session_state.awaiting_canonical_reask = False
     st.session_state.agent_logs = []
 
@@ -191,17 +190,27 @@ def _handle_scoping_user_message(user_text: str) -> None:
             block, result.get("scope_areas") if isinstance(result.get("scope_areas"), list) else None
         )
         flow.selected_phase_indices = indices
-        _append_assistant(runner.run_a21(block, indices, lang))
-        flow.main_phase = MainPhase.POST_A21_CHOICE
+        bridge = runner.run_a21(block, indices, lang).strip()
+        if bridge and bridge != ".":
+            _append_assistant(bridge)
+        flow.main_phase = MainPhase.CANONICAL
+        flow.canonical_phase_slot = 0
+        flow.canonical_phase_index = indices[0]
+        flow.canonical_step_index = 0
+        flow.canonical_reask_used = False
+        st.session_state.awaiting_canonical_reask = False
         flow.scoping_wait = None
-        st.session_state.post_a21_shown = True
+        _append_assistant(
+            _display_canonical_question(block, flow.canonical_phase_index, flow.canonical_step_index)
+        )
         return
 
 
-def _format_canonical_message(block: dict, phase_index: int, step_index: int) -> str:
+def _display_canonical_question(block: dict, phase_index: int, step_index: int) -> str:
     ph = block["phases"][phase_index]
     sk = get_canonical_step_key(step_index)
-    q = canonical_question_text(block, phase_index, step_index)
+    q_raw = canonical_question_text(block, phase_index, step_index)
+    q = _runner().localize_canonical_question(q_raw, _lang_hint())
     label = STEP_LABELS[sk]
     return (
         f"**Phase: {ph['title']}**\n\n"
@@ -270,7 +279,7 @@ def _advance_canonical_display(
         flow.canonical_phase_slot = new_slot  # type: ignore
         flow.canonical_phase_index = new_pi  # type: ignore
         flow.canonical_step_index = new_si  # type: ignore
-        _append_assistant(_format_canonical_message(block, new_pi, new_si))  # type: ignore
+        _append_assistant(_display_canonical_question(block, new_pi, new_si))  # type: ignore
         return
 
     if action == "next_phase":
@@ -279,32 +288,8 @@ def _advance_canonical_display(
         flow.canonical_step_index = new_si  # type: ignore
         ph_title = block["phases"][new_pi]["title"]  # type: ignore
         _append_assistant(runner.run_a22(ph_title, lang))
-        _append_assistant(_format_canonical_message(block, new_pi, new_si))  # type: ignore
+        _append_assistant(_display_canonical_question(block, new_pi, new_si))  # type: ignore
         return
-
-
-def _start_canonical_from_choice() -> None:
-    block = get_block_by_id(st.session_state.block_id)
-    if not block:
-        return
-    flow = st.session_state.flow
-    flow.main_phase = MainPhase.CANONICAL
-    indices = flow.selected_phase_indices or all_phase_indices(block)
-    flow.selected_phase_indices = indices
-    flow.canonical_phase_slot = 0
-    flow.canonical_phase_index = indices[0]
-    flow.canonical_step_index = 0
-    flow.canonical_reask_used = False
-    st.session_state.awaiting_canonical_reask = False
-    _append_assistant(_format_canonical_message(block, flow.canonical_phase_index, flow.canonical_step_index))
-
-
-def _end_interview_early() -> None:
-    block = get_block_by_id(st.session_state.block_id)
-    if not block:
-        return
-    st.session_state.flow.main_phase = MainPhase.DONE
-    _append_assistant(_runner().run_a11(block, st.session_state.messages, _lang_hint()))
 
 
 def _init_setup_model_widgets_once() -> None:
@@ -411,7 +396,7 @@ def main() -> None:
 
     st.title("Research-block expert interview")
     st.caption(
-        "Scoping flow A14–A22; canonical questions are taken verbatim from the JSON corpus."
+        "Scoping flow A14–A22; canonical questions are sourced from the JSON corpus (shown in your chosen response language)."
     )
 
     if not st.session_state.interview_started:
@@ -462,21 +447,6 @@ def main() -> None:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
-
-    if flow.main_phase == MainPhase.POST_A21_CHOICE and st.session_state.get("post_a21_shown"):
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Continue to canonical questions", type="primary"):
-                st.session_state.post_a21_shown = False
-                _start_canonical_from_choice()
-                st.rerun()
-        with c2:
-            if st.button("End interview (A11)"):
-                st.session_state.post_a21_shown = False
-                _end_interview_early()
-                st.rerun()
-        st.caption("Use the buttons above to continue.")
-        return
 
     if flow.main_phase == MainPhase.DONE:
         st.info("Session completed.")
