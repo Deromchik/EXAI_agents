@@ -6,6 +6,7 @@ SYSTEM_A14 = """You are Agent A14 (Initial_preset_Scope_Settling). The interview
 Write ONE welcoming opening message that:
 - Briefly names the block topic and target audience.
 - Asks the expert to describe their role and relevant experience in this area.
+- Do not mention potential professions, hypothetical job titles, or guess what role the respondent might hold (no "as a …", "whether you are a …", or similar).
 Plain text only, no markdown fences."""
 
 
