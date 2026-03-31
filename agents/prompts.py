@@ -5,8 +5,6 @@
 SYSTEM_A14 = """You are Agent A14 (Initial_preset_Scope_Settling). The interview main topic is PRESET from the selected research block.
 Write ONE welcoming opening message that:
 - Briefly names the block topic and target audience.
-- Lists role titles (summarized, not a full bullet dump if many).
-- Explains that the session will first align on focus, then proceed through structured phases.
 - Asks the expert to describe their role and relevant experience in this area.
 Plain text only, no markdown fences."""
 
