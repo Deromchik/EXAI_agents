@@ -14,6 +14,29 @@ except ImportError:
     OpenAI = None  # type: ignore
 
 
+def _phase_lines_for_prompt(block: dict) -> str:
+    """Numbered list with phase_id for research_blocks-driven prompts."""
+    lines: list[str] = []
+    for i, ph in enumerate(block["phases"]):
+        pid = ph.get("phase_id")
+        label = f"phase_id={pid!r}" if pid is not None else f"phase_index={i}"
+        lines.append(f"{i + 1}. [{label}] {ph['title']}")
+    return "\n".join(lines)
+
+
+def _phase_map_for_prompt(block: dict) -> str:
+    """Compact phase_id ↔ title map for JSON evaluators."""
+    pairs = []
+    for i, ph in enumerate(block["phases"]):
+        pairs.append(
+            {
+                "phase_id": ph.get("phase_id", i),
+                "title": ph["title"],
+            }
+        )
+    return json.dumps(pairs, ensure_ascii=False)
+
+
 def _format_history(messages: list[dict[str, str]], max_turns: int = 24) -> str:
     tail = messages[-max_turns:]
     lines = []
@@ -148,11 +171,29 @@ class AgentRunner:
 
     def run_a14(self, block: dict, language_hint: str) -> str:
         roles = "\n".join(f"- {r}" for r in block["role_titles"])
-        user = f"Language: {language_hint}\nBlock title: {block['title']}\nAudience: {block['audience']}\nRoles:\n{roles}"
+        user = (
+            f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
+            f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            f"Corpus stages in this block: {len(block['phases'])} (one stage per phase_id).\n"
+            f"Block title: {block['title']}\n"
+            f"Audience: {block['audience']}\n"
+            f"Roles:\n{roles}\n"
+            f"Phases (with phase_id):\n{_phase_lines_for_prompt(block)}"
+        )
         return self._complete("A14", prompts.SYSTEM_A14, user, language_hint)
 
-    def run_a15(self, language_hint: str) -> str:
-        user = f"Language: {language_hint}\nAsk the user for their topic and background."
+    def run_a15(self, block: dict, language_hint: str) -> str:
+        user = (
+            f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
+            f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            f"Corpus stages in this block: {len(block['phases'])} (one stage per phase_id).\n"
+            f"Block title: {block['title']}\n"
+            f"The session will use canonical questions from this block once scope is set.\n"
+            f"Ask the user for their topic and background.\n"
+            f"Phases (with phase_id):\n{_phase_lines_for_prompt(block)}"
+        )
         return self._complete("A15", prompts.SYSTEM_A15, user, language_hint)
 
     def run_a16(
@@ -160,7 +201,10 @@ class AgentRunner:
     ) -> dict[str, Any]:
         user = (
             f"Response language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
             f"Block: {block['title']}\n"
+            f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            f"Corpus stage count: {len(block['phases'])} (equals number of phase_id entries).\n"
             f"Conversation:\n{_format_history(messages)}\n"
             f"Latest user answer:\n{user_answer}"
         )
@@ -170,27 +214,58 @@ class AgentRunner:
             self._log_sink[-1]["output_parsed"] = parsed
         return parsed
 
-    def run_a13(self, messages: list[dict[str, str]], user_answer: str, language_hint: str) -> str:
-        user = f"Language: {language_hint}\nConversation:\n{_format_history(messages)}\nUnclear answer:\n{user_answer}"
-        return self._complete("A13", prompts.SYSTEM_A13, user, language_hint)
-
-    def run_a17(self, low_score_reason: str, messages: list[dict[str, str]], language_hint: str) -> str:
+    def run_a13(
+        self,
+        messages: list[dict[str, str]],
+        user_answer: str,
+        language_hint: str,
+        block: dict | None = None,
+    ) -> str:
+        ctx = ""
+        if block is not None:
+            ctx = (
+                f"\nResearch block_id: {block['block_id']}\n"
+                f"Block title: {block['title']}\n"
+                f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            )
         user = (
             f"Language: {language_hint}\n"
+            f"{ctx}"
+            f"Conversation:\n{_format_history(messages)}\n"
+            f"Unclear answer:\n{user_answer}"
+        )
+        return self._complete("A13", prompts.SYSTEM_A13, user, language_hint)
+
+    def run_a17(
+        self,
+        low_score_reason: str,
+        messages: list[dict[str, str]],
+        language_hint: str,
+        block: dict | None = None,
+    ) -> str:
+        ctx = ""
+        if block is not None:
+            ctx = (
+                f"Research block_id: {block['block_id']}\n"
+                f"Block title: {block['title']}\n"
+                f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            )
+        user = (
+            f"Language: {language_hint}\n"
+            f"{ctx}"
             f"low_score_reason: {low_score_reason}\n"
             f"Conversation:\n{_format_history(messages)}"
         )
         return self._complete("A17", prompts.SYSTEM_A17, user, language_hint)
 
     def run_a18(self, block: dict, a16_summary: dict[str, Any], messages: list[dict[str, str]], language_hint: str) -> str:
-        phase_lines = "\n".join(
-            f"{i + 1}. {ph['title']}" for i, ph in enumerate(block["phases"])
-        )
         user = (
             f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
             f"Block: {block['title']}\n"
+            f"Corpus interview has exactly {len(block['phases'])} stage(s), one per phase_id below.\n"
             f"Extracted focus: {a16_summary.get('extracted_focus_area', '')}\n"
-            f"Phases:\n{phase_lines}\n"
+            f"Phases (show each phase_id to the user in your list):\n{_phase_lines_for_prompt(block)}\n"
             f"Conversation:\n{_format_history(messages)}\n"
             "Propose scope and ask for confirmation."
         )
@@ -206,8 +281,10 @@ class AgentRunner:
         phase_titles = [ph["title"] for ph in block["phases"]]
         user = (
             f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
             f"Block: {block['title']}\n"
-            f"Phase titles: {phase_titles}\n"
+            f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            f"Phase titles (order): {phase_titles}\n"
             f"Conversation:\n{_format_history(messages)}\n"
             f"User reply to scope proposal:\n{user_answer}"
         )
@@ -217,9 +294,23 @@ class AgentRunner:
             self._log_sink[-1]["output_parsed"] = parsed
         return parsed
 
-    def run_a20(self, suggested_modification: str, messages: list[dict[str, str]], language_hint: str) -> str:
+    def run_a20(
+        self,
+        suggested_modification: str,
+        messages: list[dict[str, str]],
+        language_hint: str,
+        block: dict | None = None,
+    ) -> str:
+        ctx = ""
+        if block is not None:
+            ctx = (
+                f"Research block_id: {block['block_id']}\n"
+                f"Block title: {block['title']}\n"
+                f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
+            )
         user = (
             f"Language: {language_hint}\n"
+            f"{ctx}"
             f"suggested_modification: {suggested_modification}\n"
             f"Conversation:\n{_format_history(messages)}"
         )
@@ -231,12 +322,18 @@ class AgentRunner:
         phase_indices: list[int],
         language_hint: str,
     ) -> str:
-        titles = [block["phases"][i]["title"] for i in phase_indices]
+        rows = []
+        for i in phase_indices:
+            ph = block["phases"][i]
+            pid = ph.get("phase_id", i)
+            rows.append(f"phase_id={pid!r} | {ph['title']}")
+        rows_txt = "\n".join(rows)
         user = (
             f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
             f"Block title: {block['title']}\n"
-            f"Phases the user agreed to cover (in order): {titles}\n"
-            "Write the short transition per system instructions. Do not list interview questions."
+            f"Selected corpus phases (in order):\n{rows_txt}\n"
+            f"Write the short transition per system instructions. Do not list interview questions."
         )
         return self._complete("A21", prompts.SYSTEM_A21, user, language_hint)
 
@@ -252,11 +349,24 @@ class AgentRunner:
         return self._complete("A22", prompts.SYSTEM_A22, user, language_hint)
 
     def run_a11(self, block: dict, messages: list[dict[str, str]], language_hint: str) -> str:
-        user = f"Language: {language_hint}\nTopic: {block['title']}\nConversation:\n{_format_history(messages)}"
+        user = (
+            f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
+            f"Block title: {block['title']}\n"
+            f"Phase map covered in this session (full block reference): {_phase_map_for_prompt(block)}\n"
+            f"Conversation:\n{_format_history(messages)}"
+        )
         return self._complete("A11", prompts.SYSTEM_A11, user, language_hint)
 
-    def run_a22(self, next_phase_title: str, language_hint: str) -> str:
-        user = f"Language: {language_hint}\nNext phase title: {next_phase_title}"
+    def run_a22(self, block: dict, phase_index: int, language_hint: str) -> str:
+        ph = block["phases"][phase_index]
+        pid = ph.get("phase_id", phase_index)
+        user = (
+            f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
+            f"Next corpus phase phase_id={pid!r}\n"
+            f"Next phase title: {ph['title']}"
+        )
         return self._complete("A22", prompts.SYSTEM_A22, user, language_hint)
 
     def run_canonical_depth(
@@ -265,9 +375,25 @@ class AgentRunner:
         user_answer: str,
         messages: list[dict[str, str]],
         language_hint: str,
+        *,
+        block: dict | None = None,
+        phase_index: int | None = None,
+        step_key: str | None = None,
     ) -> dict[str, Any]:
+        corpus_ctx = ""
+        if block is not None and phase_index is not None:
+            ph = block["phases"][phase_index]
+            pid = ph.get("phase_id", phase_index)
+            corpus_ctx = (
+                f"Research block_id: {block['block_id']}\n"
+                f"Corpus phase_id: {pid!r}\n"
+                f"Phase title: {ph['title']}\n"
+                f"Corpus step key: {step_key or '?'}\n"
+                f"(Within each phase_id, steps are general → deepening → drilling.)\n"
+            )
         user = (
             f"Language: {language_hint}\n"
+            f"{corpus_ctx}"
             f"Canonical question (fixed):\n{canonical_question}\n"
             f"Conversation (excerpt):\n{_format_history(messages[-12:])}\n"
             f"User answer:\n{user_answer}"

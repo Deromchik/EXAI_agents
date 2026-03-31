@@ -53,6 +53,11 @@ def validate_research_blocks(data: dict | None = None, path: Path | None = None)
         for ph in phases:
             if not (isinstance(ph.get("title"), str) and ph["title"].strip()):
                 raise ResearchValidationError(f"block {bid}: phase needs title")
+            pid = ph.get("phase_id")
+            if not (isinstance(pid, str) and pid.strip()):
+                raise ResearchValidationError(
+                    f"block {bid}: each phase must have non-empty string phase_id"
+                )
             steps = ph.get("steps")
             if not isinstance(steps, dict):
                 raise ResearchValidationError(f"block {bid}: phase steps must be dict")

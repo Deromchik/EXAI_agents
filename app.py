@@ -129,7 +129,7 @@ def _ensure_opening() -> None:
     if st.session_state.use_preset:
         text = runner.run_a14(block, lang)
     else:
-        text = runner.run_a15(lang)
+        text = runner.run_a15(block, lang)
     _append_assistant(text)
     st.session_state.opening_generated = True
     st.session_state.flow.scoping_wait = ScopingWait.OPENING
@@ -157,12 +157,12 @@ def _handle_scoping_user_message(user_text: str) -> None:
         flow.last_a16 = result
         branch = decide_after_a16(result, th)
         if branch == "a13":
-            _append_assistant(runner.run_a13(msgs, user_text, lang))
+            _append_assistant(runner.run_a13(msgs, user_text, lang, block=block))
             flow.scoping_wait = ScopingWait.AFTER_A13_OPENING
             return
         if branch == "a17":
             _append_assistant(
-                runner.run_a17(result.get("low_score_reason") or "", msgs, lang)
+                runner.run_a17(result.get("low_score_reason") or "", msgs, lang, block=block)
             )
             flow.scoping_wait = ScopingWait.AFTER_A17_OPENING
             return
@@ -176,12 +176,12 @@ def _handle_scoping_user_message(user_text: str) -> None:
         flow.last_a19 = result
         branch = decide_after_a19(result, th)
         if branch == "a13":
-            _append_assistant(runner.run_a13(msgs, user_text, lang))
+            _append_assistant(runner.run_a13(msgs, user_text, lang, block=block))
             flow.scoping_wait = ScopingWait.AFTER_A13_SCOPE
             return
         if branch == "a20":
             _append_assistant(
-                runner.run_a20(result.get("suggested_modification") or "", msgs, lang)
+                runner.run_a20(result.get("suggested_modification") or "", msgs, lang, block=block)
             )
             flow.scoping_wait = ScopingWait.AFTER_A20_SCOPE
             return
@@ -212,8 +212,10 @@ def _display_canonical_question(block: dict, phase_index: int, step_index: int) 
     q_raw = canonical_question_text(block, phase_index, step_index)
     q = _runner().localize_canonical_question(q_raw, _lang_hint())
     label = STEP_LABELS[sk]
+    pid = ph.get("phase_id", "")
+    pid_line = f"`{pid}` · " if pid else ""
     return (
-        f"**Phase: {ph['title']}**\n\n"
+        f"**Phase: {pid_line}{ph['title']}**\n\n"
         f"_{label}_\n\n"
         f"{q}"
     )
@@ -242,7 +244,15 @@ def _handle_canonical_user_message(user_text: str) -> None:
 
     pi, si = flow.canonical_phase_index, flow.canonical_step_index
     qtext = canonical_question_text(block, pi, si)
-    depth = runner.run_canonical_depth(qtext, user_text, msgs, lang)
+    depth = runner.run_canonical_depth(
+        qtext,
+        user_text,
+        msgs,
+        lang,
+        block=block,
+        phase_index=pi,
+        step_key=get_canonical_step_key(si),
+    )
     should = int(depth.get("should_reask") or 0)
     deep = float(depth.get("deep_knowledge_level") or 0)
     if should == 1 and not flow.canonical_reask_used and deep < 0.7:
@@ -286,8 +296,7 @@ def _advance_canonical_display(
         flow.canonical_phase_slot = new_slot  # type: ignore
         flow.canonical_phase_index = new_pi  # type: ignore
         flow.canonical_step_index = new_si  # type: ignore
-        ph_title = block["phases"][new_pi]["title"]  # type: ignore
-        _append_assistant(runner.run_a22(ph_title, lang))
+        _append_assistant(runner.run_a22(block, new_pi, lang))  # type: ignore
         _append_assistant(_display_canonical_question(block, new_pi, new_si))  # type: ignore
         return
 
