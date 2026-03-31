@@ -4,6 +4,7 @@ Streamlit app: block selection, scoping agents A11–A22, canonical questions fr
 
 from __future__ import annotations
 
+import json
 import os
 import streamlit as st
 from dotenv import load_dotenv
@@ -47,7 +48,6 @@ def _apply_streamlit_secrets_to_env() -> None:
         "OPENROUTER_HTTP_REFERER",
         "OPENROUTER_X_TITLE",
         "OPENAI_MODEL",
-        "EXAI_MOCK_LLM",
     ):
         if key in sec:
             val = sec[key]
@@ -66,9 +66,11 @@ STEP_LABELS = {
 
 
 def _runner() -> AgentRunner:
-    mock = st.session_state.get("mock_llm", os.getenv("EXAI_MOCK_LLM", "0").lower() in ("1", "true", "yes"))
-    model = st.session_state.get("openrouter_model_id")
-    return AgentRunner(mock=mock, model=model)
+    return AgentRunner(
+        model=st.session_state.get("openrouter_model_id"),
+        temperature=float(st.session_state.get("llm_temperature", 0.1)),
+        log_sink=st.session_state.get("agent_logs"),
+    )
 
 
 def _lang_hint() -> str:
@@ -95,6 +97,7 @@ def _reset_interview(block_id: int, use_preset: bool) -> None:
     st.session_state.opening_generated = False
     st.session_state.post_a21_shown = False
     st.session_state.awaiting_canonical_reask = False
+    st.session_state.agent_logs = []
 
 
 def _append_assistant(text: str) -> None:
@@ -319,6 +322,10 @@ def init_session_defaults() -> None:
         st.session_state.score_threshold = DEFAULT_SCORE_THRESHOLD
     if "openrouter_model_id" not in st.session_state:
         st.session_state.openrouter_model_id = default_model_id()
+    if "llm_temperature" not in st.session_state:
+        st.session_state.llm_temperature = 0.1
+    if "agent_logs" not in st.session_state:
+        st.session_state.agent_logs = []
     _init_setup_model_widgets_once()
 
 
@@ -328,9 +335,13 @@ def main() -> None:
     init_session_defaults()
 
     st.sidebar.title("Settings")
-    st.session_state.mock_llm = st.sidebar.checkbox(
-        "Mock LLM (no API calls)",
-        value=os.getenv("EXAI_MOCK_LLM", "0").lower() in ("1", "true", "yes"),
+    st.session_state.llm_temperature = st.sidebar.slider(
+        "LLM temperature",
+        min_value=0.0,
+        max_value=2.0,
+        value=float(st.session_state.llm_temperature),
+        step=0.05,
+        help="Applied to every OpenRouter chat completion (default 0.1).",
     )
     st.session_state.score_threshold = st.sidebar.number_input(
         "Purpose/focus and scope agreement threshold (diagram)",
@@ -341,6 +352,37 @@ def main() -> None:
     )
     if st.session_state.interview_started:
         st.sidebar.caption(f"**Model:** `{st.session_state.get('openrouter_model_id', '')}`")
+        logs = st.session_state.get("agent_logs") or []
+        with st.sidebar.expander("Agent pipeline logs", expanded=False):
+            st.caption(
+                "Each entry: system prompt + user payload sent to the model, and raw response "
+                "(JSON agents also store `output_parsed`)."
+            )
+            st.metric("Recorded LLM calls", len(logs))
+            if logs:
+                st.download_button(
+                    label="Download logs (JSON)",
+                    data=json.dumps(logs, ensure_ascii=False, indent=2),
+                    file_name="agent_pipeline_logs.json",
+                    mime="application/json",
+                    key="download_agent_logs",
+                )
+                for i, entry in enumerate(logs):
+                    agent = entry.get("agent", "?")
+                    ts = (entry.get("timestamp_utc") or "")[:19]
+                    with st.expander(f"{i + 1}. {agent} @ {ts}Z"):
+                        inp = entry.get("input") or {}
+                        st.markdown("**System prompt**")
+                        st.text(inp.get("system_prompt", ""))
+                        st.markdown("**User message**")
+                        st.text(inp.get("user_message", ""))
+                        st.markdown("**Model output (raw)**")
+                        st.text(entry.get("output_raw", ""))
+                        if entry.get("output_parsed") is not None:
+                            st.markdown("**Parsed output**")
+                            st.json(entry["output_parsed"])
+            else:
+                st.info("No API calls recorded yet in this session.")
 
     summaries = list_blocks_summary()
     labels = [f"{bid}. {title}" for bid, title, _ in summaries]
@@ -353,8 +395,6 @@ def main() -> None:
 
     if not st.session_state.interview_started:
         st.subheader("Step 1: OpenRouter model")
-        if st.session_state.get("mock_llm"):
-            st.info("**Mock LLM** is on — the remote model is not called until you start the interview.")
         presets = RECOMMENDED_OPENROUTER_MODELS
         st.selectbox(
             "Recommended models for dialogue and JSON-style scoring",
@@ -389,6 +429,7 @@ def main() -> None:
     if st.sidebar.button("Reset interview"):
         st.session_state.interview_started = False
         st.session_state.messages = []
+        st.session_state.agent_logs = []
         st.session_state.flow = FlowState(main_phase=MainPhase.SETUP)
         st.rerun()
 

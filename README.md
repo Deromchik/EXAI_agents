@@ -14,7 +14,7 @@ export PYTHONPATH=.
 streamlit run app.py
 ```
 
-Without an API key: enable **Mock LLM** in the sidebar or set `EXAI_MOCK_LLM=1`.
+An **OPENROUTER_API_KEY** is required for the app to call the model.
 
 ## GitHub
 
@@ -45,13 +45,13 @@ Uses [OpenRouter](https://openrouter.ai) (OpenAI-compatible API).
 ```toml
 OPENROUTER_API_KEY = "sk-or-v1-..."
 OPENROUTER_MODEL = "openai/gpt-4o-mini"
-EXAI_MOCK_LLM = "0"
 ```
 
 - `OPENROUTER_API_KEY` — required for live model calls (from the OpenRouter dashboard).
 - `OPENROUTER_MODEL` — optional OpenRouter model id (e.g. `openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`).
 - Optional: `OPENROUTER_BASE_URL`, `OPENROUTER_HTTP_REFERER`, `OPENROUTER_X_TITLE` per [OpenRouter docs](https://openrouter.ai/docs).
-- `EXAI_MOCK_LLM` — optional; `"1"` enables stubs without the API (useful to test deploy).
+
+During an interview, the sidebar **Agent pipeline logs** section lets you inspect each agent call (system prompt, user payload, raw response, parsed JSON where applicable) and **download** them as JSON.
 
 After saving secrets, **Reboot app** if it was already running.
 
