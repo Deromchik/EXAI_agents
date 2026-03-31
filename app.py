@@ -64,6 +64,17 @@ STEP_LABELS = {
     "drilling": "Step 3 (Drilling)",
 }
 
+RESPONSE_LANGUAGE_OPTIONS = [
+    "English",
+    "Ukrainian",
+    "Russian",
+    "German",
+    "French",
+    "Spanish",
+    "Polish",
+    "Italian",
+]
+
 
 def _runner() -> AgentRunner:
     return AgentRunner(
@@ -74,7 +85,7 @@ def _runner() -> AgentRunner:
 
 
 def _lang_hint() -> str:
-    return "English"
+    return str(st.session_state.get("response_language") or "English")
 
 
 def _reset_interview(block_id: int, use_preset: bool) -> None:
@@ -143,7 +154,7 @@ def _handle_scoping_user_message(user_text: str) -> None:
         ScopingWait.AFTER_A13_OPENING,
         ScopingWait.AFTER_A17_OPENING,
     ):
-        result = runner.run_a16(block, user_text, msgs)
+        result = runner.run_a16(block, user_text, msgs, lang)
         flow.last_a16 = result
         branch = decide_after_a16(result, th)
         if branch == "a13":
@@ -326,6 +337,8 @@ def init_session_defaults() -> None:
         st.session_state.llm_temperature = 0.1
     if "agent_logs" not in st.session_state:
         st.session_state.agent_logs = []
+    if "response_language" not in st.session_state:
+        st.session_state.response_language = "English"
     _init_setup_model_widgets_once()
 
 
@@ -335,6 +348,14 @@ def main() -> None:
     init_session_defaults()
 
     st.sidebar.title("Settings")
+    st.session_state.response_language = st.sidebar.selectbox(
+        "Assistant response language",
+        RESPONSE_LANGUAGE_OPTIONS,
+        index=RESPONSE_LANGUAGE_OPTIONS.index(st.session_state.response_language)
+        if st.session_state.response_language in RESPONSE_LANGUAGE_OPTIONS
+        else 0,
+        help="All LLM agents are instructed to reply only in this language (system prompt suffix).",
+    )
     st.session_state.llm_temperature = st.sidebar.slider(
         "LLM temperature",
         min_value=0.0,
