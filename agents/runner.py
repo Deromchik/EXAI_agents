@@ -16,13 +16,18 @@ except ImportError:
 
 
 def _phase_lines_for_prompt(block: dict) -> str:
-    """Numbered list with phase_id for research_blocks-driven prompts."""
+    """Numbered list with phase_id for internal evaluators / JSON agents only (not user-facing copy)."""
     lines: list[str] = []
     for i, ph in enumerate(block["phases"]):
         pid = ph.get("phase_id")
         label = f"phase_id={pid!r}" if pid is not None else f"phase_index={i}"
         lines.append(f"{i + 1}. [{label}] {ph['title']}")
     return "\n".join(lines)
+
+
+def _phase_human_numbered_titles(block: dict) -> str:
+    """Ordinal + title only — what the user should see (no phase_id strings)."""
+    return "\n".join(f"{i + 1}. {ph['title']}" for i, ph in enumerate(block["phases"]))
 
 
 def _phase_map_for_prompt(block: dict) -> str:
@@ -266,13 +271,14 @@ class AgentRunner:
             f"Language: {language_hint}\n"
             f"main_topic (research block title): {block['title']}\n"
             f"Research block_id: {block['block_id']}\n"
-            f"Corpus interview has exactly {len(block['phases'])} stage(s), one per phase_id below.\n"
+            f"Corpus interview has exactly {len(block['phases'])} thematic stage(s).\n"
             f"extracted_focus_area: {ex or '(none)'}\n"
             f"extended_focus_area: {ext or '(none)'}\n"
-            f"Phases (each line must appear in your numbered list with phase_id visible):\n{_phase_lines_for_prompt(block)}\n"
+            f"Phases for the assistant message (copy titles only; use this numbering; NEVER show phase_id, "
+            f"bracket labels, or internal IDs to the user):\n{_phase_human_numbered_titles(block)}\n"
             f"Conversation:\n{_format_history(messages)}\n"
-            "Write one message: a_18-style acknowledgment of their focus, then the phase list, then ask them to "
-            "confirm the plan or say what to change (skip/reorder/narrow by phase_id)."
+            "Write one message per system instructions: transition, bridge, same numbered list (titles only), "
+            "then one substantive question about their expertise — NOT about confirming or changing the roadmap."
         )
         return self._complete("A18", prompts.SYSTEM_A18, user, language_hint)
 
@@ -399,8 +405,8 @@ class AgentRunner:
         user = (
             f"Language: {language_hint}\n"
             f"Research block_id: {block['block_id']}\n"
-            f"Next corpus phase phase_id={pid!r}\n"
-            f"Next phase title: {ph['title']}"
+            f"Next phase title (use this theme in natural language): {ph['title']}\n"
+            f"Internal phase id (do NOT print this id or bracket labels to the user): {pid!r}"
         )
         return self._complete("A22", prompts.SYSTEM_A22, user, language_hint)
 

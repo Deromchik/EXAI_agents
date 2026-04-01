@@ -223,10 +223,8 @@ def _display_canonical_question(block: dict, phase_index: int, step_index: int) 
     ).strip()
     st.session_state.current_canonical_question_plain = q
     label = STEP_LABELS[sk]
-    pid = ph.get("phase_id", "")
-    pid_line = f"`{pid}` · " if pid else ""
     return (
-        f"**Phase: {pid_line}{ph['title']}**\n\n"
+        f"**Phase: {ph['title']}**\n\n"
         f"_{label}_\n\n"
         f"{q}"
     )
