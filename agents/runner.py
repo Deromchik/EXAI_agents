@@ -78,8 +78,8 @@ def _apply_response_language(system: str, language: str, agent_id: str) -> str:
     if agent_id in _JSON_LANGUAGE_AGENTS:
         block += (
             f"\nFor the JSON object, every string value (including extracted_focus_area, "
-            f"low_score_reason, follow_up_question, scope_areas entries, suggested_modification, "
-            f"exception_knowledge if present) MUST be in **{lang}**. "
+            f"extended_focus_area, low_score_reason, follow_up_question, scope_areas entries, "
+            f"suggested_modification, exception_knowledge if present) MUST be in **{lang}**. "
             f"JSON keys stay in English; numeric/boolean types unchanged."
         )
     return system + block
@@ -266,6 +266,7 @@ class AgentRunner:
             f"Block: {block['title']}\n"
             f"Corpus interview has exactly {len(block['phases'])} stage(s), one per phase_id below.\n"
             f"Extracted focus: {a16_summary.get('extracted_focus_area', '')}\n"
+            f"Extended focus (fuller synthesis, if present): {a16_summary.get('extended_focus_area', '')}\n"
             f"Phases (show each phase_id to the user in your list):\n{_phase_lines_for_prompt(block)}\n"
             f"Conversation:\n{_format_history(messages)}\n"
             "Propose scope and ask for confirmation."

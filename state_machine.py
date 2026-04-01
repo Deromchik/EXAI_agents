@@ -79,10 +79,18 @@ def decide_after_a16(
 ) -> str:
     """
     Returns: 'a13' | 'a17' | 'advance_step2'
+    Mirrors `system_prompt_builder` Stage-1 branching: incomprehensible → A13;
+    `should_agent_reask` from A16 (like a_16_prompt) forces A17 before advancing.
     """
     au = float(result.get("answer_understanding_score") or 0)
     if au < understanding_floor:
         return "a13"
+    try:
+        sar = int(result.get("should_agent_reask", 0))
+    except (TypeError, ValueError):
+        sar = 0
+    if sar == 1:
+        return "a17"
     pu = float(result.get("purpose_understanding_score") or 0)
     fs = float(result.get("focus_specificity_score") or 0)
     if pu > threshold and fs > threshold:
@@ -97,10 +105,18 @@ def decide_after_a19(
 ) -> str:
     """
     Returns: 'a13' | 'a20' | 'advance_step3'
+    `should_agent_reask` (cf. a_19_prompt) forces A20 when the reply needs narrowing
+    even if other fields look acceptable.
     """
     au = float(result.get("answer_understanding_score") or 0)
     if au < understanding_floor:
         return "a13"
+    try:
+        sar = int(result.get("should_agent_reask", 0))
+    except (TypeError, ValueError):
+        sar = 0
+    if sar == 1:
+        return "a20"
     sa = float(result.get("scope_agreement_score") or 0)
     if sa > threshold:
         return "advance_step3"
