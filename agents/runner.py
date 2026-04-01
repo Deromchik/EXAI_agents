@@ -260,16 +260,19 @@ class AgentRunner:
         return self._complete("A17", prompts.SYSTEM_A17, user, language_hint)
 
     def run_a18(self, block: dict, a16_summary: dict[str, Any], messages: list[dict[str, str]], language_hint: str) -> str:
+        ext = (a16_summary.get("extended_focus_area") or "").strip()
+        ex = (a16_summary.get("extracted_focus_area") or "").strip()
         user = (
             f"Language: {language_hint}\n"
+            f"main_topic (research block title): {block['title']}\n"
             f"Research block_id: {block['block_id']}\n"
-            f"Block: {block['title']}\n"
             f"Corpus interview has exactly {len(block['phases'])} stage(s), one per phase_id below.\n"
-            f"Extracted focus: {a16_summary.get('extracted_focus_area', '')}\n"
-            f"Extended focus (fuller synthesis, if present): {a16_summary.get('extended_focus_area', '')}\n"
-            f"Phases (show each phase_id to the user in your list):\n{_phase_lines_for_prompt(block)}\n"
+            f"extracted_focus_area: {ex or '(none)'}\n"
+            f"extended_focus_area: {ext or '(none)'}\n"
+            f"Phases (each line must appear in your numbered list with phase_id visible):\n{_phase_lines_for_prompt(block)}\n"
             f"Conversation:\n{_format_history(messages)}\n"
-            "Propose scope and ask for confirmation."
+            "Write one message: a_18-style acknowledgment of their focus, then the phase list, then ask them to "
+            "confirm the plan or say what to change (skip/reorder/narrow by phase_id)."
         )
         return self._complete("A18", prompts.SYSTEM_A18, user, language_hint)
 
