@@ -33,6 +33,16 @@ from state_machine import DEFAULT_SCORE_THRESHOLD
 load_dotenv()
 
 
+def _conversation_export_txt(messages: list[dict]) -> str:
+    """Plain-text export: one block per turn (assistant / user)."""
+    blocks: list[str] = []
+    for m in messages:
+        role = (m.get("role") or "?").strip().upper()
+        content = (m.get("content") or "").strip()
+        blocks.append(f"[{role}]\n{content}")
+    return "\n\n".join(blocks)
+
+
 def _apply_streamlit_secrets_to_env() -> None:
     """Streamlit Community Cloud: copy st.secrets into os.environ for the OpenRouter client."""
     try:
@@ -385,6 +395,28 @@ def main() -> None:
     )
     if st.session_state.interview_started:
         st.sidebar.caption(f"**Model:** `{st.session_state.get('openrouter_model_id', '')}`")
+        msgs = list(st.session_state.get("messages") or [])
+        with st.sidebar.expander("Conversation export", expanded=False):
+            st.caption("Only chat turns (user + assistant). Excludes agent logs and system prompts.")
+            st.metric("Messages", len(msgs))
+            bid = st.session_state.get("block_id")
+            base = f"conversation_block{bid}" if bid is not None else "conversation"
+            st.download_button(
+                label="Download conversation (JSON)",
+                data=json.dumps(msgs, ensure_ascii=False, indent=2),
+                file_name=f"{base}.json",
+                mime="application/json",
+                key="download_conversation_json",
+                disabled=len(msgs) == 0,
+            )
+            st.download_button(
+                label="Download conversation (TXT)",
+                data=_conversation_export_txt(msgs),
+                file_name=f"{base}.txt",
+                mime="text/plain; charset=utf-8",
+                key="download_conversation_txt",
+                disabled=len(msgs) == 0,
+            )
         logs = st.session_state.get("agent_logs") or []
         with st.sidebar.expander("Agent pipeline logs", expanded=False):
             st.caption(
