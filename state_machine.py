@@ -56,10 +56,16 @@ def get_canonical_step_key(step_index: int) -> str:
     return STEP_ORDER[step_index]
 
 
-def canonical_question_text(block: dict, phase_index: int, step_index: int) -> str:
+def canonical_step_prompt(block: dict, phase_index: int, step_index: int) -> str:
+    """English brief in JSON: what the question must cover (LLM turns this into one question)."""
     ph = block["phases"][phase_index]
     key = get_canonical_step_key(step_index)
     return ph["steps"][key]
+
+
+def canonical_question_text(block: dict, phase_index: int, step_index: int) -> str:
+    """Alias for `canonical_step_prompt` (same string: corpus step instruction)."""
+    return canonical_step_prompt(block, phase_index, step_index)
 
 
 def all_phase_indices(block: dict) -> list[int]:
@@ -143,7 +149,7 @@ def resolve_phase_indices_from_scope_areas(block: dict, scope_areas: list[str] |
 
 
 def collect_planned_questions_for_phases(block: dict, phase_indices: list[int]) -> list[tuple[int, str, str]]:
-    """List of (phase_index, phase_title, question_text) in order for A21 listing."""
+    """List of (phase_index, phase_title, step_instruction) in order (briefs, not final wording)."""
     out: list[tuple[int, str, str]] = []
     for pi in phase_indices:
         ph = block["phases"][pi]

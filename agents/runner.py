@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import prompts
+from state_machine import STEP_ORDER
 
 try:
     from openai import OpenAI
@@ -347,6 +348,36 @@ class AgentRunner:
             f"Source question:\n{source_question.strip()}"
         )
         return self._complete("A22", prompts.SYSTEM_A22, user, language_hint)
+
+    def run_synthesize_canonical_question(
+        self,
+        block: dict,
+        phase_index: int,
+        step_index: int,
+        extracted_focus_area: str,
+        messages: list[dict[str, str]],
+        language_hint: str,
+    ) -> str:
+        ph = block["phases"][phase_index]
+        sk = STEP_ORDER[step_index]
+        instruction = (ph["steps"].get(sk) or "").strip()
+        roles = "\n".join(f"- {r}" for r in block["role_titles"])
+        focus = (extracted_focus_area or "").strip() or "(not provided — infer role/domain from conversation if possible)"
+        user = (
+            f"Language: {language_hint}\n"
+            f"Research block_id: {block['block_id']}\n"
+            f"Block title: {block['title']}\n"
+            f"Audience: {block['audience']}\n"
+            f"Example role titles (approximate / indicative only; respondent need not match any):\n{roles}\n"
+            f"phase_id: {ph.get('phase_id')!r}\n"
+            f"Phase title: {ph['title']}\n"
+            f"Step key: {sk}\n"
+            f"Step instruction brief (English — cover this intent in your question):\n{instruction}\n"
+            f"Respondent focus / role summary (from scoping):\n{focus}\n"
+            f"Recent conversation:\n{_format_history(messages[-18:])}\n"
+            f"Produce exactly one interview question in the mandatory language."
+        )
+        return self._complete("CANONICAL_Q", prompts.SYSTEM_CANONICAL_QUESTION, user, language_hint)
 
     def run_a11(self, block: dict, messages: list[dict[str, str]], language_hint: str) -> str:
         user = (

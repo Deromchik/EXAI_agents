@@ -23,7 +23,7 @@ def load_research_blocks(path: Path | None = None) -> dict:
 
 
 def validate_research_blocks(data: dict | None = None, path: Path | None = None) -> None:
-    """Assert structure: blocks with phases, each phase has three non-empty step strings."""
+    """Assert structure: blocks with phases; each phase has three non-empty step instruction strings (general/deepening/drilling briefs)."""
     raw = data if data is not None else load_research_blocks(path)
     blocks = raw.get("blocks")
     if not isinstance(blocks, list) or not blocks:

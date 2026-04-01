@@ -108,6 +108,7 @@ def _reset_interview(block_id: int, use_preset: bool) -> None:
     st.session_state.opening_generated = False
     st.session_state.awaiting_canonical_reask = False
     st.session_state.agent_logs = []
+    st.session_state.current_canonical_question_plain = ""
 
 
 def _append_assistant(text: str) -> None:
@@ -209,8 +210,18 @@ def _handle_scoping_user_message(user_text: str) -> None:
 def _display_canonical_question(block: dict, phase_index: int, step_index: int) -> str:
     ph = block["phases"][phase_index]
     sk = get_canonical_step_key(step_index)
-    q_raw = canonical_question_text(block, phase_index, step_index)
-    q = _runner().localize_canonical_question(q_raw, _lang_hint())
+    flow = st.session_state.flow
+    a16 = flow.last_a16 or {}
+    focus = str(a16.get("extracted_focus_area") or "").strip()
+    q = _runner().run_synthesize_canonical_question(
+        block,
+        phase_index,
+        step_index,
+        focus,
+        st.session_state.messages,
+        _lang_hint(),
+    ).strip()
+    st.session_state.current_canonical_question_plain = q
     label = STEP_LABELS[sk]
     pid = ph.get("phase_id", "")
     pid_line = f"`{pid}` · " if pid else ""
@@ -243,7 +254,14 @@ def _handle_canonical_user_message(user_text: str) -> None:
         return
 
     pi, si = flow.canonical_phase_index, flow.canonical_step_index
-    qtext = canonical_question_text(block, pi, si)
+    qtext = (st.session_state.get("current_canonical_question_plain") or "").strip()
+    if not qtext:
+        a16 = flow.last_a16 or {}
+        focus = str(a16.get("extracted_focus_area") or "").strip()
+        qtext = runner.run_synthesize_canonical_question(
+            block, pi, si, focus, msgs, lang
+        ).strip()
+        st.session_state.current_canonical_question_plain = qtext
     depth = runner.run_canonical_depth(
         qtext,
         user_text,
@@ -333,6 +351,8 @@ def init_session_defaults() -> None:
         st.session_state.agent_logs = []
     if "response_language" not in st.session_state:
         st.session_state.response_language = "English"
+    if "current_canonical_question_plain" not in st.session_state:
+        st.session_state.current_canonical_question_plain = ""
     _init_setup_model_widgets_once()
 
 
@@ -405,7 +425,7 @@ def main() -> None:
 
     st.title("Research-block expert interview")
     st.caption(
-        "Scoping flow A14–A22; canonical questions are sourced from the JSON corpus (shown in your chosen response language)."
+        "Scoping flow A14–A22; interview questions are **synthesized** from JSON step briefs using the respondent’s stated role and domain (example job titles in the block are indicative only)."
     )
 
     if not st.session_state.interview_started:
