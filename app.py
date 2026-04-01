@@ -22,7 +22,6 @@ from state_machine import (
     ScopingWait,
     advance_canonical_position,
     all_phase_indices,
-    canonical_question_text,
     decide_after_a16,
     decide_after_a19,
     get_canonical_step_key,
@@ -223,11 +222,13 @@ def _display_canonical_question(block: dict, phase_index: int, step_index: int) 
     flow = st.session_state.flow
     a16 = flow.last_a16 or {}
     focus = str(a16.get("extracted_focus_area") or "").strip()
+    focus_ext = str(a16.get("extended_focus_area") or "").strip()
     q = _runner().run_synthesize_canonical_question(
         block,
         phase_index,
         step_index,
         focus,
+        focus_ext,
         st.session_state.messages,
         _lang_hint(),
     ).strip()
@@ -266,8 +267,9 @@ def _handle_canonical_user_message(user_text: str) -> None:
     if not qtext:
         a16 = flow.last_a16 or {}
         focus = str(a16.get("extracted_focus_area") or "").strip()
+        focus_ext = str(a16.get("extended_focus_area") or "").strip()
         qtext = runner.run_synthesize_canonical_question(
-            block, pi, si, focus, msgs, lang
+            block, pi, si, focus, focus_ext, msgs, lang
         ).strip()
         st.session_state.current_canonical_question_plain = qtext
     depth = runner.run_canonical_depth(

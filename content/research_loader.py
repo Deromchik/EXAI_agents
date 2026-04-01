@@ -1,4 +1,9 @@
-"""Load and validate canonical research content from JSON."""
+"""Load and validate canonical research content from JSON.
+
+Questions for the three step types (general / deepening / drilling) are synthesized
+dynamically by the CANONICAL_Q agent from block title, phase title, and the
+respondent's stated specialty — there are no static question texts in the JSON.
+"""
 
 from __future__ import annotations
 
@@ -23,7 +28,9 @@ def load_research_blocks(path: Path | None = None) -> dict:
 
 
 def validate_research_blocks(data: dict | None = None, path: Path | None = None) -> None:
-    """Assert structure: blocks with phases; each phase has three non-empty step instruction strings (general/deepening/drilling briefs)."""
+    """Assert structure: blocks → phases (each with non-empty phase_id and title).
+    No 'steps' field is required; questions are generated dynamically.
+    """
     raw = data if data is not None else load_research_blocks(path)
     blocks = raw.get("blocks")
     if not isinstance(blocks, list) or not blocks:
@@ -58,15 +65,6 @@ def validate_research_blocks(data: dict | None = None, path: Path | None = None)
                 raise ResearchValidationError(
                     f"block {bid}: each phase must have non-empty string phase_id"
                 )
-            steps = ph.get("steps")
-            if not isinstance(steps, dict):
-                raise ResearchValidationError(f"block {bid}: phase steps must be dict")
-            for sk in STEP_KEYS:
-                t = steps.get(sk)
-                if not isinstance(t, str) or not t.strip():
-                    raise ResearchValidationError(
-                        f"block {bid} phase {ph.get('phase_id')!r}: step {sk!r} empty or missing"
-                    )
 
 
 @lru_cache(maxsize=1)

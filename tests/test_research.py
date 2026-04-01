@@ -24,8 +24,7 @@ def test_block3_single_phase():
     assert len(b["phases"]) == 1
 
 
-def test_validate_rejects_empty_step():
-    doc = load_research_blocks()
+def test_validate_rejects_missing_phase_title():
     bad = {
         "blocks": [
             {
@@ -36,8 +35,28 @@ def test_validate_rejects_empty_step():
                 "phases": [
                     {
                         "phase_id": "x",
-                        "title": "P",
-                        "steps": {"general": "", "deepening": "x", "drilling": "y"},
+                        "title": "",
+                    }
+                ],
+            }
+        ]
+    }
+    with pytest.raises(ResearchValidationError):
+        validate_research_blocks(bad)
+
+
+def test_validate_rejects_missing_phase_id():
+    bad = {
+        "blocks": [
+            {
+                "block_id": 98,
+                "title": "T",
+                "audience": "A",
+                "role_titles": ["R"],
+                "phases": [
+                    {
+                        "phase_id": "",
+                        "title": "Some phase",
                     }
                 ],
             }

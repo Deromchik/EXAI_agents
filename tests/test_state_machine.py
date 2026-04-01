@@ -9,9 +9,9 @@ from state_machine import (
 def test_advance_subset_phases():
     block = {
         "phases": [
-            {"title": "P0", "steps": {"general": "a", "deepening": "b", "drilling": "c"}},
-            {"title": "P1", "steps": {"general": "d", "deepening": "e", "drilling": "f"}},
-            {"title": "P2", "steps": {"general": "g", "deepening": "h", "drilling": "i"}},
+            {"title": "P0"},
+            {"title": "P1"},
+            {"title": "P2"},
         ]
     }
     sel = [0, 2]
@@ -42,8 +42,8 @@ def test_decide_after_a19_should_agent_reask_forces_a20():
 def test_resolve_scope_areas():
     block = {
         "phases": [
-            {"title": "Alpha phase", "steps": {"general": "x", "deepening": "y", "drilling": "z"}},
-            {"title": "Beta", "steps": {"general": "x", "deepening": "y", "drilling": "z"}},
+            {"title": "Alpha phase"},
+            {"title": "Beta"},
         ]
     }
     assert resolve_phase_indices_from_scope_areas(block, None) == [0, 1]

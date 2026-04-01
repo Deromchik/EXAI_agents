@@ -14,21 +14,11 @@
       "phases": [
         {
           "phase_id": "1-1",
-          "title": "Strategy, business model, and \"red lines\"",
-          "steps": {
-            "general": "[GENERAL] Ask one opening question: how they define the company's growth strategy in their market and what absolute \"red lines\" (non-negotiable taboos) exist in their business model. Adapt industry examples to the respondent's stated sector (e.g. metal distribution only if relevant).",
-            "deepening": "[DEEPENING] Ask how they structure sales and marketing so the organization produces leads aligned with margin strategy—not just volume or \"any\" leads. Probe concrete mechanisms.",
-            "drilling": "[DRILLING] Pose a dilemma: a very large strategic customer offers a contract that would massively grow revenue but requires breaking a stated red line (e.g. unacceptable balance-sheet or compliance risk). Ask whether they would refuse, renegotiate, or change the rule—and to justify, in terms credible for their role."
-          }
+          "title": "Strategy, business model, and \"red lines\""
         },
         {
           "phase_id": "1-2",
-          "title": "Hard decisions under uncertainty",
-          "steps": {
-            "general": "[GENERAL] Ask them to describe their decision-making framework when the market is stressed (e.g. commodity price spikes, supply disruption)—worded for their industry context.",
-            "deepening": "[DEEPENING] Ask for the hardest management decision in roughly the last year tied to financial or operational risk, with enough detail to show real trade-offs.",
-            "drilling": "[DRILLING] Scenario: a high-impact decision must be made in about two hours with only partial information. Ask how they assess risk and act on the spot—make stakes plausible for their domain."
-          }
+          "title": "Hard decisions under uncertainty"
         }
       ]
     },
@@ -46,30 +36,15 @@
       "phases": [
         {
           "phase_id": "2-1",
-          "title": "Qualifying complex RFQs and early risk signals",
-          "steps": {
-            "general": "[GENERAL] Ask about their process for a complex RFQ: which questions they must ask the customer up front before committing resources.",
-            "deepening": "[DEEPENING] Ask them to explain quoting logic and which early signals (red flags) mean the deal will be toxic and they should walk away.",
-            "drilling": "[DRILLING] Dilemma: quarter-end, plan is short, a major account sends an RFQ with clear red flags in the spec. Ask whether they pursue it to hit targets and how they balance sales goals vs company risk."
-          }
+          "title": "Qualifying complex RFQs and early risk signals"
         },
         {
           "phase_id": "2-2",
-          "title": "Industry standards and technical specifications",
-          "steps": {
-            "general": "[GENERAL] Ask how they read and challenge strict technical specifications from demanding customer segments—adapt examples (medical, aerospace, defense, etc.) to what the respondent actually sells to.",
-            "deepening": "[DEEPENING] Ask how they translate rigid standard requirements into commercial proposal language that defends price and scope.",
-            "drilling": "[DRILLING] Ethical tension: they noticed a hidden tolerance or requirement competitors likely missed. Ask whether they disclose it to the customer (possibly lowering price) or use it as an edge—and why."
-          }
+          "title": "Industry standards and technical specifications"
         },
         {
           "phase_id": "2-3",
-          "title": "Export compliance and international operations",
-          "steps": {
-            "general": "[GENERAL] Ask what is specific or constrained about international shipments of specialty materials in their practice (customs, licenses, classifications)—tied to their markets.",
-            "deepening": "[DEEPENING] Ask how they screen customers and transactions for sanctions / dual-use / export-control risk.",
-            "drilling": "[DRILLING] Scenario: goods stuck in a third country after a sudden regulatory change; downstream customer's line stops and penalties are threatened. Ask legal and communication steps in the first 24 hours."
-          }
+          "title": "Export compliance and international operations"
         }
       ]
     },
@@ -87,12 +62,7 @@
       "phases": [
         {
           "phase_id": "3-1",
-          "title": "Order validation and critical data",
-          "steps": {
-            "general": "[GENERAL] Ask what happens after sales confirms with the customer: their process and which ERP or master-data fields are critical so operations and production do not fail.",
-            "deepening": "[DEEPENING] Ask which mistakes sales typically make when handing off orders and what production or margin consequences follow.",
-            "drilling": "[DRILLING] They missed a specification error that reached purchasing. Ask who owns financial responsibility in their system and how they resolve the internal conflict without destroying trust."
-          }
+          "title": "Order validation and critical data"
         }
       ]
     },
@@ -110,21 +80,11 @@
       "phases": [
         {
           "phase_id": "4-1",
-          "title": "Supplier assessment and country risk",
-          "steps": {
-            "general": "[GENERAL] Ask how they evaluate and select mills or strategic suppliers and which country or geopolitical risks they bake into decisions—for their material categories.",
-            "deepening": "[DEEPENING] Ask how they negotiate when the supplier is effectively sole source for a needed alloy or grade.",
-            "drilling": "[DRILLING] Scenario: the main low-cost source for a critical material is suddenly unavailable (sanctions, plant shutdown, logistics). Ask for a fast heuristic or playbook to replace supply without quality collapse."
-          }
+          "title": "Supplier assessment and country risk"
         },
         {
           "phase_id": "4-2",
-          "title": "Material selection and equivalents",
-          "steps": {
-            "general": "[GENERAL] Ask how they handle requests for non-standard or hard-to-source materials.",
-            "deepening": "[DEEPENING] Ask which rules of thumb they use to propose material equivalents across standards (e.g. ASTM vs EN) while managing customer approval risk.",
-            "drilling": "[DRILLING] They found a strong technical match but the customer's quality function rejects it for bureaucratic reasons and material is already purchased. Ask how they minimize commercial loss."
-          }
+          "title": "Material selection and equivalents"
         }
       ]
     },
@@ -142,21 +102,11 @@
       "phases": [
         {
           "phase_id": "5-1",
-          "title": "Certification and traceability",
-          "steps": {
-            "general": "[GENERAL] Ask how certificate verification at incoming inspection works in their operation (e.g. EN 10204 3.1 / 3.2 or sector equivalents).",
-            "deepening": "[DEEPENING] Ask how they ensure traceability from melt or heat through warehouse to customer for their product mix.",
-            "drilling": "[DRILLING] Crisis: a forged certificate slipped through and the part is already installed at a safety- or audit-sensitive customer. Ask them to walk through protocol including legal and reputational angles."
-          }
+          "title": "Certification and traceability"
         },
         {
           "phase_id": "5-2",
-          "title": "Audit-ready processes and ESG (Supply Chain Act / LkSG)",
-          "steps": {
-            "general": "[GENERAL] Ask how they design processes to survive surprise audits from ISO or sector regulators relevant to them.",
-            "deepening": "[DEEPENING] Ask how they implement supply-chain due diligence (e.g. German Supply Chain Due Diligence Act–style) and assess ESG or human-rights risk among partners.",
-            "drilling": "[DRILLING] Dilemma: the most profitable supplier violates serious ESG rules; exiting costs a large profit share; staying risks regulator or public backlash. Ask what they decide as compliance lead and why."
-          }
+          "title": "Audit-ready processes and ESG (Supply Chain Act / LkSG)"
         }
       ]
     },
@@ -174,21 +124,11 @@
       "phases": [
         {
           "phase_id": "6-1",
-          "title": "Routing and early risk signals",
-          "steps": {
-            "general": "[GENERAL] Ask how they choose transport modes and build routes for heavy or special cargo in their network.",
-            "deepening": "[DEEPENING] Ask which tracking signals or carrier communications are early warnings of critical delay.",
-            "drilling": "[DRILLING] Scenario: accident or loss damages time-critical material; customer is JIT with no buffer. Ask for immediate operational steps they would take as logistics lead."
-          }
+          "title": "Routing and early risk signals"
         },
         {
           "phase_id": "6-2",
-          "title": "Inventory and consignment (call-off)",
-          "steps": {
-            "general": "[GENERAL] Ask what logic drives their inventory policy (service, capital, obsolescence) in their context.",
-            "deepening": "[DEEPENING] Ask how they run consignment or call-off programs when the customer pulls partial lots unpredictably.",
-            "drilling": "[DRILLING] Scenario: large consignment stock at a customer who enters insolvency; title is yours but goods are on their site. Ask how they recover physically and legally."
-          }
+          "title": "Inventory and consignment (call-off)"
         }
       ]
     },
@@ -206,12 +146,7 @@
       "phases": [
         {
           "phase_id": "7-1",
-          "title": "Process selection and DFM (design for manufacturability)",
-          "steps": {
-            "general": "[GENERAL] Ask how they choose processing technology when a new customer drawing arrives (capabilities, cost, risk)—for their shop reality.",
-            "deepening": "[DEEPENING] Ask which DFM mistakes they most often see from customer designers and how that affects quoting and execution.",
-            "drilling": "[DRILLING] Sales already committed, but tolerances are not feasible without massive scrap on their equipment. Ask how they negotiate a drawing change without undermining the sales relationship."
-          }
+          "title": "Process selection and DFM (design for manufacturability)"
         }
       ]
     }

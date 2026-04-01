@@ -57,14 +57,14 @@ def get_canonical_step_key(step_index: int) -> str:
 
 
 def canonical_step_prompt(block: dict, phase_index: int, step_index: int) -> str:
-    """English brief in JSON: what the question must cover (LLM turns this into one question)."""
-    ph = block["phases"][phase_index]
-    key = get_canonical_step_key(step_index)
-    return ph["steps"][key]
+    """Returns the step key (general / deepening / drilling) as a plain string.
+    Questions are synthesized dynamically by CANONICAL_Q — no static text in JSON.
+    """
+    return get_canonical_step_key(step_index)
 
 
 def canonical_question_text(block: dict, phase_index: int, step_index: int) -> str:
-    """Alias for `canonical_step_prompt` (same string: corpus step instruction)."""
+    """Alias for `canonical_step_prompt`."""
     return canonical_step_prompt(block, phase_index, step_index)
 
 
@@ -165,11 +165,13 @@ def resolve_phase_indices_from_scope_areas(block: dict, scope_areas: list[str] |
 
 
 def collect_planned_questions_for_phases(block: dict, phase_indices: list[int]) -> list[tuple[int, str, str]]:
-    """List of (phase_index, phase_title, step_instruction) in order (briefs, not final wording)."""
+    """List of (phase_index, phase_title, step_key) in order.
+    Questions are synthesized dynamically — step_key is 'general' / 'deepening' / 'drilling'.
+    """
     out: list[tuple[int, str, str]] = []
     for pi in phase_indices:
         ph = block["phases"][pi]
         title = ph["title"]
-        for si, sk in enumerate(STEP_ORDER):
-            out.append((pi, title, ph["steps"][sk]))
+        for sk in STEP_ORDER:
+            out.append((pi, title, sk))
     return out

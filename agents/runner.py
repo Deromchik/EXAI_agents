@@ -53,6 +53,36 @@ def _format_history(messages: list[dict[str, str]], max_turns: int = 24) -> str:
     return "\n".join(lines)
 
 
+def _user_messages_for_specialty_context(
+    messages: list[dict[str, str]],
+    *,
+    max_turns: int = 48,
+    max_total_chars: int = 8000,
+) -> str:
+    """Chronological user-only text for anchoring questions to stated role / experience."""
+    if not messages:
+        return "(no user messages yet)"
+    tail = messages[-max_turns:]
+    parts: list[str] = []
+    total = 0
+    for m in tail:
+        if m.get("role") != "user":
+            continue
+        t = (m.get("content") or "").strip()
+        if not t:
+            continue
+        if total + len(t) > max_total_chars:
+            room = max_total_chars - total - 40
+            if room > 200:
+                parts.append(t[:room] + "…")
+            else:
+                parts.append("… [user turn too long; truncated]")
+            break
+        parts.append(t)
+        total += len(t) + 4
+    return "\n---\n".join(parts) if parts else "(no user messages yet)"
+
+
 def _extract_json_object(text: str) -> dict[str, Any]:
     text = text.strip()
     try:
@@ -365,26 +395,33 @@ class AgentRunner:
         phase_index: int,
         step_index: int,
         extracted_focus_area: str,
+        extended_focus_area: str,
         messages: list[dict[str, str]],
         language_hint: str,
     ) -> str:
         ph = block["phases"][phase_index]
         sk = STEP_ORDER[step_index]
-        instruction = (ph["steps"].get(sk) or "").strip()
         roles = "\n".join(f"- {r}" for r in block["role_titles"])
-        focus = (extracted_focus_area or "").strip() or "(not provided — infer role/domain from conversation if possible)"
+        ext_short = (extracted_focus_area or "").strip()
+        ext_long = (extended_focus_area or "").strip()
+        specialty_digest = _user_messages_for_specialty_context(messages)
         user = (
             f"Language: {language_hint}\n"
-            f"Research block_id: {block['block_id']}\n"
-            f"Block title: {block['title']}\n"
-            f"Audience: {block['audience']}\n"
-            f"Example role titles (approximate / indicative only; respondent need not match any):\n{roles}\n"
-            f"phase_id: {ph.get('phase_id')!r}\n"
+            f"--- Anchor 1: research block ---\n"
+            f"block_id (internal; never print to user): {block['block_id']}\n"
+            f"Block title (macro domain / industry lane — use this vocabulary): {block['title']}\n"
+            f"Audience line from corpus: {block['audience']}\n"
+            f"Example role titles (indicative only):\n{roles}\n"
+            f"--- Anchor 2: phase (sub-theme for this question) ---\n"
             f"Phase title: {ph['title']}\n"
-            f"Step key: {sk}\n"
-            f"Step instruction brief (English — cover this intent in your question):\n{instruction}\n"
-            f"Respondent focus / role summary (from scoping):\n{focus}\n"
-            f"Recent conversation:\n{_format_history(messages[-18:])}\n"
+            f"phase_id (internal; never print to user): {ph.get('phase_id')!r}\n"
+            f"--- Anchor 3: respondent specialty (most important — ground the question here) ---\n"
+            f"extracted_focus_area (A16 concise): {ext_short or '(none)'}\n"
+            f"extended_focus_area (A16 fuller): {ext_long or '(none)'}\n"
+            f"User messages only — chronological (specialty / role / experience in their own words):\n{specialty_digest}\n"
+            f"--- Step type (defines the shape / depth of the question) ---\n"
+            f"Step key: {sk}  (general = open exploration | deepening = process/mechanism/example | drilling = scenario/dilemma/stress-test)\n"
+            f"--- Full dialogue tail (context) ---\n{_format_history(messages[-18:])}\n"
             f"Produce exactly one interview question in the mandatory language."
         )
         return self._complete("CANONICAL_Q", prompts.SYSTEM_CANONICAL_QUESTION, user, language_hint)
