@@ -307,17 +307,12 @@ def _advance_canonical_display(
 
 
 def _init_setup_model_widgets_once() -> None:
-    """One-time defaults for model widgets from OPENROUTER_MODEL / secrets."""
+    """One-time defaults for model selectbox from OPENROUTER_MODEL / secrets (whitelist only)."""
     if st.session_state.get("_setup_model_widgets_ready"):
         return
-    env_mid = os.getenv("OPENROUTER_MODEL", "").strip()
     ids = [p[0] for p in RECOMMENDED_OPENROUTER_MODELS]
-    if env_mid in ids:
-        st.session_state.setup_model_preset_index = ids.index(env_mid)
-    else:
-        st.session_state.setup_model_preset_index = 0
-        if env_mid:
-            st.session_state.setup_custom_openrouter_id = env_mid
+    resolved = default_model_id()
+    st.session_state.setup_model_preset_index = ids.index(resolved)
     st.session_state._setup_model_widgets_ready = True
 
 
@@ -441,18 +436,12 @@ def main() -> None:
         st.subheader("Step 1: OpenRouter model")
         presets = RECOMMENDED_OPENROUTER_MODELS
         st.selectbox(
-            "Recommended models for dialogue and JSON-style scoring",
+            "Model (allowed list only)",
             range(len(presets)),
             format_func=lambda i: f"{presets[i][1]} — `{presets[i][0]}`",
             key="setup_model_preset_index",
         )
-        st.text_input(
-            "Custom model ID (if set, overrides the list above)",
-            key="setup_custom_openrouter_id",
-            placeholder="e.g. anthropic/claude-3.7-sonnet",
-        )
-        custom_raw = (st.session_state.get("setup_custom_openrouter_id") or "").strip()
-        chosen_model = custom_raw if custom_raw else presets[st.session_state.setup_model_preset_index][0]
+        chosen_model = presets[st.session_state.setup_model_preset_index][0]
 
         st.subheader("Step 2: research block")
         choice = st.selectbox("Choose block", range(len(labels)), format_func=lambda i: labels[i])
