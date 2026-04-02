@@ -23,9 +23,7 @@ from state_machine import (
     advance_canonical_position,
     all_phase_indices,
     decide_after_a16,
-    decide_after_a19,
     get_canonical_step_key,
-    resolve_phase_indices_from_scope_areas,
 )
 from state_machine import DEFAULT_SCORE_THRESHOLD
 
@@ -178,31 +176,10 @@ def _handle_scoping_user_message(user_text: str) -> None:
             return
         flow.diagram_step = 2
         _append_assistant(runner.run_a18(block, result, msgs, lang))
-        flow.scoping_wait = ScopingWait.SCOPE
-        return
-
-    if wait in (ScopingWait.SCOPE, ScopingWait.AFTER_A13_SCOPE, ScopingWait.AFTER_A20_SCOPE):
-        result = runner.run_a19(block, user_text, msgs, lang)
-        flow.last_a19 = result
-        branch = decide_after_a19(result, th)
-        if branch == "a13":
-            _append_assistant(runner.run_a13(msgs, user_text, lang, block=block))
-            flow.scoping_wait = ScopingWait.AFTER_A13_SCOPE
-            return
-        if branch == "a20":
-            _append_assistant(
-                runner.run_a20(result.get("suggested_modification") or "", msgs, lang, block=block)
-            )
-            flow.scoping_wait = ScopingWait.AFTER_A20_SCOPE
-            return
+        # A18 no longer asks a question — go straight to canonical with all phases.
         flow.diagram_step = 3
-        indices = resolve_phase_indices_from_scope_areas(
-            block, result.get("scope_areas") if isinstance(result.get("scope_areas"), list) else None
-        )
+        indices = all_phase_indices(block)
         flow.selected_phase_indices = indices
-        bridge = runner.run_a21(block, indices, lang).strip()
-        if bridge and bridge != ".":
-            _append_assistant(bridge)
         flow.main_phase = MainPhase.CANONICAL
         flow.canonical_phase_slot = 0
         flow.canonical_phase_index = indices[0]

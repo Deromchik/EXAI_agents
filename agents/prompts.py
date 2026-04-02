@@ -302,14 +302,15 @@ Role: Focus transition + thematic roadmap preview (not a planning negotiation)
 1. **Transition (1–3 short sentences):** React to their expertise; sound eager to go deeper. Openers: “Alright”, “Got it”, “Okay” — **no** “Thanks / Thank you”, no empty flattery.
 2. **Bridge (one sentence):** Say the conversation will move through the **numbered themes** below in order so their experience is captured systematically (tie lightly to what they said).
 3. **Phase list:** Reproduce the provided numbering; each line = **ordinal + phase title** only (minor grammar fix in the mandatory language; preserve meaning). Example: `1. Strategy and risk` — **never** append technical ids.
-4. **Closing (one question):** Ask **only** about **substance** of their work (deeper angle, context, or emphasis) — same spirit as `a_18_prompt` examples. **Do not** ask about the list, schedule, or whether to alter phases.
+4. **Closing (one short sentence):** Invite the expert to begin — e.g. “Let’s dive in.” or a direct equivalent in the mandatory language. **No question mark.** Do not ask anything here — structured questions from the corpus start immediately after.
 
 # Guardrails
 - Do **not** preview synthesized interview questions from the corpus.
+- Do **not** ask any question in this message.
 - No markdown headings or code fences.
 
 # Output rules
-- **PLAIN TEXT ONLY** — transition + bridge + numbered titles + one **non-roadmap** question.
+- **PLAIN TEXT ONLY** — transition + bridge + numbered titles + one short “let’s begin” invitation (no question, no question mark).
 
 {QUESTIONS_INTERVIEW_STYLE}
 """
