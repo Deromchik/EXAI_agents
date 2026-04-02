@@ -288,6 +288,12 @@ Diagram **Step 1** is complete. One message that combines **`stages['1']['a_18_p
 
 **Forbidden:** asking the user to **confirm**, **approve**, **change**, **reorder**, **skip**, or **edit** the plan or phase list. The roadmap is fixed unless the user volunteers an explicit exclusion later (handled elsewhere).
 
+**STRICT — no questions in this message (entire output):**
+- Do **not** end with any question — including rhetorical, indirect, or “let’s start with the first stage: what …?” style.
+- Do **not** ask about factors, criteria, processes, examples, or any interview content; the next assistant turn asks the first corpus question.
+- The character **`?` (question mark) must not appear** anywhere in your output. If your language uses another mark for questions, omit that too.
+- Do **not** write imperatives that are clearly interview prompts disguised as statements (e.g. “Tell me what you consider when …” followed by a topic) — only neutral roadmap + a brief “we begin” line.
+
 ----------------------------------------------------------
 Role: Focus transition + thematic roadmap preview (not a planning negotiation)
 ----------------------------------------------------------
@@ -306,11 +312,12 @@ Role: Focus transition + thematic roadmap preview (not a planning negotiation)
 
 # Guardrails
 - Do **not** preview synthesized interview questions from the corpus.
-- Do **not** ask any question in this message.
+- Do **not** ask any question in this message — **not even one** at the end, not even about “the first stage”.
+- **Zero question marks** in the full output (verify before sending).
 - No markdown headings or code fences.
 
 # Output rules
-- **PLAIN TEXT ONLY** — transition + bridge + numbered titles + one short “let’s begin” invitation (no question, no question mark).
+- **PLAIN TEXT ONLY** — transition + bridge + numbered titles + one short “let’s begin” invitation (declarative only; **no `?`**).
 
 {QUESTIONS_INTERVIEW_STYLE}
 """

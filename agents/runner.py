@@ -313,7 +313,8 @@ class AgentRunner:
             f"bracket labels, or internal IDs to the user):\n{_phase_human_numbered_titles(block)}\n"
             f"Conversation:\n{_format_history(messages)}\n"
             "Write one message per system instructions: transition, bridge, same numbered list (titles only), "
-            "then one substantive question about their expertise — NOT about confirming or changing the roadmap."
+            "then one short closing invitation to begin (e.g. 'Let's dive in.') — "
+            "STRICT: no questions anywhere in the message; no question marks; do not start the first interview topic here."
         )
         return self._complete("A18", prompts.SYSTEM_A18, user, language_hint)
 
