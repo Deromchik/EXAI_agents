@@ -18,10 +18,11 @@ def test_all_block_ids_present():
     assert ids == {1, 2, 3, 4, 5, 6, 7}
 
 
-def test_block3_single_phase():
+def test_block3_phases():
     b = get_block_by_id(3)
     assert b is not None
-    assert len(b["phases"]) == 1
+    assert len(b["phases"]) >= 1
+    assert all("phase_id" in ph and "title" in ph for ph in b["phases"])
 
 
 def test_validate_rejects_missing_phase_title():

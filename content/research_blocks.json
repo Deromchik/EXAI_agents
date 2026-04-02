@@ -19,6 +19,22 @@
         {
           "phase_id": "1-2",
           "title": "Hard decisions under uncertainty"
+        },
+        {
+          "phase_id": "1-3",
+          "title": "Organizational design and authority mapping"
+        },
+        {
+          "phase_id": "1-4",
+          "title": "KPI architecture and performance governance"
+        },
+        {
+          "phase_id": "1-5",
+          "title": "Board and investor relations and capital allocation logic"
+        },
+        {
+          "phase_id": "1-6",
+          "title": "Crisis management and communication under pressure"
         }
       ]
     },
@@ -45,6 +61,22 @@
         {
           "phase_id": "2-3",
           "title": "Export compliance and international operations"
+        },
+        {
+          "phase_id": "2-4",
+          "title": "Pricing strategy and margin protection in competitive bids"
+        },
+        {
+          "phase_id": "2-5",
+          "title": "Account development and retention mechanics"
+        },
+        {
+          "phase_id": "2-6",
+          "title": "Technical pre-sales: NDA to feasibility to offer"
+        },
+        {
+          "phase_id": "2-7",
+          "title": "Sales forecasting and pipeline discipline"
         }
       ]
     },
@@ -63,6 +95,22 @@
         {
           "phase_id": "3-1",
           "title": "Order validation and critical data"
+        },
+        {
+          "phase_id": "3-2",
+          "title": "Pricing, quotation workflows and approval gates"
+        },
+        {
+          "phase_id": "3-3",
+          "title": "CRM and ERP data quality and process compliance"
+        },
+        {
+          "phase_id": "3-4",
+          "title": "Escalation paths: order exceptions and complaints"
+        },
+        {
+          "phase_id": "3-5",
+          "title": "Sales-to-finance handoff: invoicing and revenue recognition"
         }
       ]
     },
@@ -85,6 +133,22 @@
         {
           "phase_id": "4-2",
           "title": "Material selection and equivalents"
+        },
+        {
+          "phase_id": "4-3",
+          "title": "Contract structure and commercial risk allocation"
+        },
+        {
+          "phase_id": "4-4",
+          "title": "Supply security and dual-sourcing strategy"
+        },
+        {
+          "phase_id": "4-5",
+          "title": "Cost engineering and should-cost modelling"
+        },
+        {
+          "phase_id": "4-6",
+          "title": "Supplier quality and corrective action (SCAR and 8D)"
         }
       ]
     },
@@ -107,6 +171,22 @@
         {
           "phase_id": "5-2",
           "title": "Audit-ready processes and ESG (Supply Chain Act / LkSG)"
+        },
+        {
+          "phase_id": "5-3",
+          "title": "Incoming inspection and material release workflows"
+        },
+        {
+          "phase_id": "5-4",
+          "title": "Non-conformance management (NCR) and root cause"
+        },
+        {
+          "phase_id": "5-5",
+          "title": "Customer audit preparation and lessons learned"
+        },
+        {
+          "phase_id": "5-6",
+          "title": "Supplier qualification and re-approval"
         }
       ]
     },
@@ -129,6 +209,22 @@
         {
           "phase_id": "6-2",
           "title": "Inventory and consignment (call-off)"
+        },
+        {
+          "phase_id": "6-3",
+          "title": "Customs classification and duty optimization"
+        },
+        {
+          "phase_id": "6-4",
+          "title": "Dangerous goods and hazmat compliance"
+        },
+        {
+          "phase_id": "6-5",
+          "title": "Carrier management and SLA enforcement"
+        },
+        {
+          "phase_id": "6-6",
+          "title": "Returns, reverse logistics and material recovery"
         }
       ]
     },
@@ -147,6 +243,26 @@
         {
           "phase_id": "7-1",
           "title": "Process selection and DFM (design for manufacturability)"
+        },
+        {
+          "phase_id": "7-2",
+          "title": "Tolerancing philosophy and GD&T interpretation"
+        },
+        {
+          "phase_id": "7-3",
+          "title": "First article inspection (FAI / AS9102) and PPAP"
+        },
+        {
+          "phase_id": "7-4",
+          "title": "Tooling, fixture design and setup time reduction"
+        },
+        {
+          "phase_id": "7-5",
+          "title": "Special processes: heat treatment, surface finishing, NDT"
+        },
+        {
+          "phase_id": "7-6",
+          "title": "ERP-driven production planning and material flow"
         }
       ]
     }
