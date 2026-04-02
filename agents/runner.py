@@ -54,6 +54,39 @@ def _format_history(messages: list[dict[str, str]], max_turns: int = 24) -> str:
     return "\n".join(lines)
 
 
+def _prior_assistant_questions(
+    messages: list[dict[str, str]],
+    *,
+    max_questions: int = 30,
+) -> str:
+    """Extract all assistant turns that end with '?' — the actual questions already asked.
+    Returned as a numbered list for CANONICAL_Q anti-repetition."""
+    questions: list[str] = []
+    for m in messages:
+        if m.get("role") != "assistant":
+            continue
+        content = (m.get("content") or "").strip()
+        if not content:
+            continue
+        # Take only the last sentence / line that contains a '?' to avoid full message noise
+        lines = [ln.strip() for ln in content.splitlines() if ln.strip()]
+        for line in reversed(lines):
+            if "?" in line:
+                questions.append(line)
+                break
+    # Deduplicate preserving order, keep tail
+    seen: set[str] = set()
+    unique: list[str] = []
+    for q in questions:
+        if q not in seen:
+            seen.add(q)
+            unique.append(q)
+    tail = unique[-max_questions:]
+    if not tail:
+        return "(none yet)"
+    return "\n".join(f"{i + 1}. {q}" for i, q in enumerate(tail))
+
+
 def _user_messages_for_specialty_context(
     messages: list[dict[str, str]],
     *,
@@ -411,6 +444,7 @@ class AgentRunner:
         ext_short = (extracted_focus_area or "").strip()
         ext_long = (extended_focus_area or "").strip()
         specialty_digest = _user_messages_for_specialty_context(messages)
+        prior_questions = _prior_assistant_questions(messages)
         user = (
             f"Language: {language_hint}\n"
             f"--- Anchor 1: research block ---\n"
@@ -427,6 +461,8 @@ class AgentRunner:
             f"User messages only — chronological (specialty / role / experience in their own words):\n{specialty_digest}\n"
             f"--- Step type (defines the shape / depth of the question) ---\n"
             f"Step key: {sk}  (general = open exploration | deepening = process/mechanism/example | drilling = scenario/dilemma/stress-test)\n"
+            f"--- All prior interview questions asked so far (DO NOT REPEAT or REPHRASE any of these) ---\n"
+            f"{prior_questions}\n"
             f"--- Full dialogue tail (context) ---\n{_format_history(messages[-18:])}\n"
             f"Produce exactly one interview question in the mandatory language."
         )

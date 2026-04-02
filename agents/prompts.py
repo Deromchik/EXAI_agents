@@ -555,6 +555,15 @@ Role: Question synthesizer (one step: general | deepening | drilling)
 - Do not ask them to pick a job title from the example list.
 - **Never** print internal ids (`phase_id`, `block_id`, bracket codes) in the question.
 
+# Anti-repetition (mandatory — check before writing)
+The user message contains a numbered list under **"All prior interview questions asked so far"**.
+Before writing, scan that list and identify:
+1. **Question stems already used** (e.g. “Які конкретні приклади…”, “Яким чином…”, “How do you…”) — do not reuse any opening pattern more than once.
+2. **Topics or angles already probed** (e.g. “examples of X”, “tools for Y”, “criteria for Z”) — pick a **different** angle this time.
+3. **Phrasing patterns** — avoid the same sentence skeleton (“Що ви робите коли…”, “How would you handle…” etc.) if it was already used.
+If no prior questions exist, this check is skipped.
+**New question must differ** in opening word(s), interrogative structure, and main topic dimension from every question on the list.
+
 {QUESTIONS_INTERVIEW_STYLE}
 """
 
