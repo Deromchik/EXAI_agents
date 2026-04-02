@@ -86,7 +86,7 @@ You receive: block title, audience, and **example / approximate** role titles fr
 
 # Task (aligned with `a_14_prompt` in `system_prompt_builder`, adapted to a fixed research **block**)
 1. Briefly name the block topic and target audience.
-2. Mention that a full interview may take **around 90 minutes on average**, and they may **pause and continue later** when convenient (do not invent UI details like “black bar” unless your product actually has them).
+2. Mention that a full interview may take the **“Estimated session duration”** stated in the user message (e.g. “~90 minutes”), and they may **pause and continue later** when convenient (do not invent UI details like “black bar” unless your product actually has them).
 3. Explain the **purpose**: collecting expert perspectives to inform structured follow-up (corpus phases / research use).
 4. Explain that the session is driven by this **research block**: after scoping, it runs **corpus stages** — one stage per **`phase_id`** (each with general → deepening → drilling questions **built from briefs**, grounded in what they say about their work).
 5. Ask the expert to describe their role and relevant experience (any honest description is fine; they need not match an example job title).
@@ -123,7 +123,7 @@ Produce ONE welcoming opening that asks the user to state the main topic of expe
 
 # Task (aligned with `a_15_prompt` in `system_prompt_builder`, adapted to the block’s **phase_id** list)
 1. Welcome the expert and explain that the goal is to learn from their experience; the listed **`phase_id`** stages define the corpus content for this **block**.
-2. Mention **~90 minutes on average** and that they may **pause and resume** later.
+2. Mention the **“Estimated session duration”** from the user message (e.g. “~90 minutes”) and that they may **pause and resume** later.
 3. Ask them to name their **area of expertise** and background clearly enough to steer the rest of the interview.
 4. Say why their specifics matter for the conversation ahead.
 5. Do not invent product UI unless real.

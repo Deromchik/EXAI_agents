@@ -86,3 +86,22 @@ def list_blocks_summary() -> list[tuple[int, str, str]]:
     """(block_id, title, audience) for UI."""
     doc = get_validated_document()
     return [(b["block_id"], b["title"], b["audience"]) for b in doc["blocks"]]
+
+
+# --- Session duration estimate -------------------------------------------
+
+_SCOPING_MINUTES = 15          # fixed overhead: A14/A15 → A16/A17 → A18 → A21
+_MINUTES_PER_PHASE = 12        # 3 steps × ~4 min each (question + answer + possible re-ask)
+_ROUND_TO = 15                 # round up to nearest N minutes for a clean UX string
+
+
+def estimate_session_minutes(block: dict) -> int:
+    """Return estimated interview duration in minutes for the given block, rounded up to _ROUND_TO."""
+    raw = _SCOPING_MINUTES + len(block["phases"]) * _MINUTES_PER_PHASE
+    remainder = raw % _ROUND_TO
+    return raw if remainder == 0 else raw + (_ROUND_TO - remainder)
+
+
+def estimate_session_label(block: dict) -> str:
+    """Human-readable duration string, e.g. '~90 minutes' or '~105 minutes'."""
+    return f"~{estimate_session_minutes(block)} minutes"

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import prompts
+from content.research_loader import estimate_session_label
 from state_machine import STEP_ORDER
 
 try:
@@ -207,11 +208,13 @@ class AgentRunner:
 
     def run_a14(self, block: dict, language_hint: str) -> str:
         roles = "\n".join(f"- {r}" for r in block["role_titles"])
+        duration = estimate_session_label(block)
         user = (
             f"Language: {language_hint}\n"
             f"Research block_id: {block['block_id']}\n"
             f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
             f"Corpus stages in this block: {len(block['phases'])} (one stage per phase_id).\n"
+            f"Estimated session duration: {duration} — use this figure when mentioning how long the interview takes.\n"
             f"Block title: {block['title']}\n"
             f"Audience: {block['audience']}\n"
             f"Roles:\n{roles}\n"
@@ -220,11 +223,13 @@ class AgentRunner:
         return self._complete("A14", prompts.SYSTEM_A14, user, language_hint)
 
     def run_a15(self, block: dict, language_hint: str) -> str:
+        duration = estimate_session_label(block)
         user = (
             f"Language: {language_hint}\n"
             f"Research block_id: {block['block_id']}\n"
             f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
             f"Corpus stages in this block: {len(block['phases'])} (one stage per phase_id).\n"
+            f"Estimated session duration: {duration} — use this figure when mentioning how long the interview takes.\n"
             f"Block title: {block['title']}\n"
             f"The session will use canonical questions from this block once scope is set.\n"
             f"Ask the user for their topic and background.\n"
