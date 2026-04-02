@@ -8,15 +8,15 @@ from __future__ import annotations
 import os
 
 # Default when OPENROUTER_MODEL is unset or not in RECOMMENDED_OPENROUTER_MODELS
-DEFAULT_OPENROUTER_MODEL_ID = "openai/gpt-5.4-mini"
+DEFAULT_OPENROUTER_MODEL_ID = "google/gemini-3.1-flash-lite-preview"
 
 # (model_id, short UI label) — order shown in Streamlit
 RECOMMENDED_OPENROUTER_MODELS: list[tuple[str, str]] = [
     ("openai/gpt-4o-mini", "GPT-4o mini"),
     ("openai/gpt-5.4-nano", "GPT-5.4 nano"),
-    ("openai/gpt-5.4-mini", "GPT-5.4 mini (default)"),
+    ("openai/gpt-5.4-mini", "GPT-5.4 mini"),
     ("mistralai/mistral-small-2603", "Mistral Small 2603"),
-    ("google/gemini-3.1-flash-lite-preview", "Gemini 3.1 Flash Lite (preview)"),
+    ("google/gemini-3.1-flash-lite-preview", "Gemini 3.1 Flash Lite (preview, default)"),
 ]
 
 _ALLOWED_IDS = frozenset(mid for mid, _ in RECOMMENDED_OPENROUTER_MODELS)
