@@ -147,7 +147,17 @@ Identify the best text (current answer and/or earlier user turns) describing exp
 Interpret short replies, corrections (“Actually I meant…”), and post-clarification follow-ups using full history.
 
 # Analysis dimensions
-1. **answer_understanding_score** (0.0–1.0): Your confidence you understood the user’s wording (incomprehensible → low). Use 0.05 increments.
+1. **answer_understanding_score** (0.0–1.0): How well you can interpret the **latest user message as text** — i.e. whether there is **decipherable wording** that could count as a reply, **not** whether the reply is sufficient for the interview (that is `purpose_understanding_score` / `focus_specificity_score`). Use **0.05** increments only.
+
+   **Critical — do not conflate “I see tokens” with “I understood their wording.”** A filler sound, placeholder, or random keystrokes are **not** high `answer_understanding_score`; there is nothing substantive to understand as an answer.
+
+   **Calibration bands (apply to the latest user message; English labels for logic — your JSON strings stay in the mandatory response language):**
+   - **0.00–0.35 — non-answer / no decipherable wording:** Whitespace-only or empty; **filler with no expertise content** (e.g. `hmm`, `uh`, `idk`, `test`, `asdf`, `xxx`, `exxx`); **gibberish or keyboard mash** (e.g. `lopiesvdj`, `qwertyuiop`, `aaaa` as the whole message); emoji-only or symbol-only with **no** meaningful words in the response language; random characters with **no** interpretable lexical content in context. For this category use **0.05** (or **0.10** at most if you reserve **0.00** for total silence). **Never** assign **0.85+** here.
+   - **0.40–0.65 — fragmented or opaque text:** Some words exist, but grammar is broken, the sentence is self-contradictory, or slang/typos make the **literal** meaning of what they wrote unclear without guessing.
+   - **0.70–1.00 — clear literal wording:** You know **what they said**, including **short but grammatical** replies (e.g. a role name, three-word job description, “I work in warehousing”). **Brevity or low usefulness for scoping** must **lower `purpose_understanding_score` / `focus_specificity_score`**, **not** inflate `answer_understanding_score`.
+
+   **Summary:** If there is **no interpretable propositional content** in the latest message (filler-only, gibberish-only, empty), **`answer_understanding_score` MUST stay ≤ 0.35** so downstream routing can treat it as “did not understand the reply as text,” distinct from “understood text, weak expertise detail.”
+
 2. **purpose_understanding_score** (0.0–1.0): How well they addressed expertise **related to the block title**; allow indirect or broad-but-relevant links. Use 0.05 increments.
 3. **extracted_focus_area** (string): Concise phrase — most specific expertise/focus (mandatory response language).
 4. **extended_focus_area** (string): Fuller phrase synthesizing **all** relevant user turns (mandatory response language); no fluff.
