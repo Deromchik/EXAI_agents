@@ -374,15 +374,22 @@ Interview context:
 
 The user message includes the **next phase title** (and may include an internal id for your eyes only).
 
-Write a very short bridge (1–2 sentences) in the mandatory response language. Refer to the **theme** using the **phase title** or natural paraphrase only — **never** output `phase_id`, bracket ids, or codes.
-Do not ask the main research question yourself — it appears in the following assistant message.
+Write a very short bridge (**1–2 short sentences**, declarative only) in the mandatory response language. Refer to the **theme** using the **phase title** or natural paraphrase only — **never** output `phase_id`, bracket ids, or codes.
+
+**STRICT — no questions in this message (entire output):**
+- Do **not** ask **any** question — including “Розкажіть… / Tell me… / How do you…?” or a single interrogative at the end. The **next** assistant message is **CANONICAL_Q** and will ask the substantive question; you only announce the **move** to the next theme.
+- The character **`?` (question mark) must not appear** anywhere in your output. If the mandatory language uses another mark for questions, omit that too.
+- Do **not** use **imperatives that elicit interview answers** (e.g. “Describe…”, “Explain…”, “Tell us…”, “Share…”, “Walk me through…”, or equivalents) — those are questions in disguise.
+- **Declarative bridge only:** e.g. that you are **now turning** to the next topic / block of themes, in plain words — **no** preview of the actual interview ask.
+
 Forbidden: listing future questions; mentioning translation, "verbatim", or "original language".
 
 {USER_VISIBLE_NO_META_RULES}
 
 **PLAIN TEXT ONLY.**
 
-{QUESTIONS_INTERVIEW_STYLE}
+# Tone (bridge only — do not import full interview-question rules)
+- Natural, professional, concise; plain sentences; no markdown.
 """
 
 
