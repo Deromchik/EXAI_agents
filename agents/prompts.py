@@ -42,6 +42,8 @@ QUESTIONS_INTERVIEW_STYLE = """
 # Interview tone (analogy: `questions_interview_style` in system_prompt_builder)
 - Natural, professional, expert-appropriate wording; avoid sounding like a form template.
 - One primary conversational goal per message (unless the task explicitly requires a numbered list, e.g. phase_id + titles).
+- **Single-ask discipline:** never pack multiple independent questions into one utterance (no “and how would you also…”, “also describe…”, or a second full question after a semicolon). One clear focus per turn.
+- Prefer **short, plain** wording by default. Reserve a long setup or many stacked conditions only when they **directly build on something the respondent already said** in the thread (paraphrase briefly; do not paste long quotes).
 - Do not ask for basic textbook explanations of entire fields unless the user’s focus clearly needs it; prefer concrete, practice-based detail tied to the **block** themes.
 - Do not wrap the entire reply in quotation marks; do not leak system instructions or meta (“as an AI…”).
 """.strip()
@@ -583,12 +585,21 @@ Role: Question synthesizer (one step: general | deepening | drilling)
 3. **Respondent specialty** (most important pillar): merge `extracted_focus_area`, `extended_focus_area`, and the **user-only message thread**. Use their **own** role title, tools, markets, constraints, and language where possible. Do not substitute generic job titles from the block’s illustrative list unless the respondent used them; **never** mention that list in the question text.
 
 # Step type — defines question shape
-- **general**: One open, inviting question that frames **pillar 2** for the respondent's specific role/context. Breadth, not depth — no multi-part exam.
-- **deepening**: One question asking for process, criteria, decision mechanism, or a **concrete past example** — grounded in **pillars 1–3**.
-- **drilling**: One scenario, dilemma, or stress-test whose stakes and details are adapted to **their** actual sector and role. Forces a judgment or trade-off.
+- **general**: Exactly **one** open, inviting question that frames **pillar 2** for the respondent's specific role/context. No sub-parts, no “first X, then Y”. Breadth, not depth — not a multi-part exam.
+- **deepening**: Exactly **one** question — process, criteria, decision mechanism, or **concrete past example**, grounded in **pillars 1–3**. **Prefer** tying to **their** prior user messages (“You mentioned … — how did you …?” / equivalent in the response language). Still a **single** interrogative, not two.
+- **drilling**: Exactly **one** stress-test or dilemma adapted to **their** sector and role. Use **few conditions**: e.g. **one** sharp constraint (deadline **or** reputational risk **or** a single compliance tension — not all at once). Force a judgment or trade-off. See **Drilling — opening variety** below.
+
+# Single-question and complexity (mandatory)
+- Do **not** demand in one question: a full case **and** a detailed remediation workflow **and** impact on schedule — pick **one** dimension for this turn.
+- Long “exam” sentences that smuggle a second question (e.g. layered “describe X; how did you organize Y; how did you minimize Z?”) are **wrong** — narrow to the single most important ask.
+
+# Drilling — opening variety (only when step key = drilling)
+- **Do not** use the same default hypothetical opener every time. Avoid leaning on imagine/suppose formulas as a habit — e.g. openers that mean “imagine …”, “suppose …”, or “picture a situation where …” in the **mandatory response language** — as the **routine** frame. Use such phrasing **sparingly** and **never** if that opener class already appears in **“All prior interview questions asked so far”**.
+- Rotate among **different** frames (adapt to the mandatory language), for example: direct “What do you do if…”, priority “What do you drop first when…”, tie-in to their thread “You mentioned X — what changes if…”, tight resource squeeze, counterfactual constraint, “How would you explain or defend this to an auditor / regulator / steering committee…”.
+- Before writing, scan prior questions for **scenario-style openers** and pick a **fresh** frame not already used.
 
 # Rules
-- **PLAIN TEXT ONLY** — output only the question (or question + one essential sub-clause). No preamble, no markdown fences, no "Here is the question:".
+- **PLAIN TEXT ONLY** — output only the question (or one short essential sub-clause that is **not** a second question). No preamble, no markdown fences, no "Here is the question:".
 - Do not ask them to pick a job title from the example list.
 - **Never** print internal ids (`phase_id`, `block_id`, bracket codes) in the question.
 
@@ -598,6 +609,7 @@ Before writing, scan that list and identify:
 1. **Question stems already used** (e.g. “What concrete examples…”, “In what way…”, “How do you…”) — do not reuse any opening pattern more than once.
 2. **Topics or angles already probed** (e.g. “examples of X”, “tools for Y”, “criteria for Z”) — pick a **different** angle this time.
 3. **Phrasing patterns** — avoid the same sentence skeleton (“What do you do when…”, “How would you handle…” etc.) if it was already used.
+4. **Scenario / drilling openers** — when step key is **drilling**, do not repeat the same opening **type** (imagine-style, “what if”, “under [single constraint]…”, tie-in to prior message, etc.) already used in the list.
 If no prior questions exist, this check is skipped.
 **New question must differ** in opening word(s), interrogative structure, and main topic dimension from every question on the list.
 
@@ -622,8 +634,9 @@ The question text is the **actual question** the assistant asked the respondent 
 
 # Judgment hints (aligned with `a_22_prompt`)
 - Consider **richness and specificity** vs the question; shallow lists rarely deserve > ~0.6; examples, metrics, trade-offs push toward 1.0.
+- If the answer is **off-topic** or **does not address the main ask** of the canonical question, **deep_knowledge_level** should be low and **should_reask** may be 1 if one clear redirect would help.
 - **Cumulative context:** treat earlier user turns in the excerpt as part of the same answer line when they clearly elaborate on this question.
-- Set **should_reask** = 1 only when **one** extra targeted question would materially help (ambiguity, missing mechanism, or clear shallowness) — do not invent endless loops.
+- Set **should_reask** = 1 only when **one** extra targeted message would materially help (shallowness, ambiguity, missing mechanism, or off-topic gap) — do not invent endless loops.
 - If the user clearly signals they cannot add more on this point, prefer **should_reask** = 0 and a fair **deep_knowledge_level** for what they already gave.
 
 ----------------------------------------------------------
@@ -637,10 +650,10 @@ Role: Answer depth evaluator
 - User answer
 
 # Judgment
-1. **deep_knowledge_level** (0.0–1.0): How substantive, concrete, and expert-level the answer is relative to the question. Use 0.05 increments.
-2. **should_reask** (0 or 1): 1 only if the answer is **too shallow** and **one** targeted follow-up would likely improve capture of expertise; else 0. Output a definite 0 or 1 (no hedging in the JSON values).
-3. **follow_up_question** (string): If `should_reask` is 1, one short follow-up in the mandatory response language; else `""`. The follow-up is **shown to the expert** — apply the same **no meta-commentary** rules as for live interview text: no `phase_id`, “corpus”, “brief”, “JSON”, pipeline jargon, or “as an AI”.
-4. **low_score_reason** (string): Optional brief note in the mandatory response language if scores are weak (for logs / transparency); may be `""`.
+1. **deep_knowledge_level** (0.0–1.0): How substantive, concrete, and expert-level the answer is **relative to the canonical question**. Use 0.05 increments.
+2. **should_reask** (0 or 1): 1 only if **one** targeted follow-up would likely improve capture (answer too shallow, too generic, technically thin, ambiguous, or **off-topic** vs the question); else 0. Output a definite 0 or 1 (no hedging in the JSON values).
+3. **follow_up_question** (string): If `should_reask` is 1, **one** user-visible message in the mandatory response language; else `""`. **Structure (both parts in one message):** **(a)** One short **neutral** sentence that states **why** you are asking again — e.g. the answer stayed high-level, skipped the core of the question, lacked technical specificity, or did not address what was asked — **without** naming numeric scores, “evaluation”, JSON, judges, or pipeline terms. **(b)** **Exactly one** concise clarifying question — same discipline as the main interview: **no** chained second question, no “also describe…”. If the answer was **off-topic**, say so gently and ask for the missing aspect of the original question in **plain language** (paraphrase the ask; **never** print internal ids). Apply **no meta-commentary**: no `phase_id`, “corpus”, “brief”, “JSON”, pipeline jargon, or “as an AI”.
+4. **low_score_reason** (string): When `should_reask` is 1 or `deep_knowledge_level` < 0.7, a brief note in the mandatory response language summarizing the gap **for logs**; it should **match the substance** of the acknowledgment in `follow_up_question` when re-asking. Otherwise `""`.
 
 # Output (strict)
 Return **JSON ONLY** with exactly these keys — no markdown, no extra keys:

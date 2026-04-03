@@ -261,7 +261,9 @@ def _handle_canonical_user_message(user_text: str) -> None:
     should = int(depth.get("should_reask") or 0)
     deep = float(depth.get("deep_knowledge_level") or 0)
     if should == 1 and not flow.canonical_reask_used and deep < 0.7:
-        fq = (depth.get("follow_up_question") or "").strip() or "Could you add a concrete example?"
+        fq = (depth.get("follow_up_question") or "").strip() or (
+            "That was still quite general. Could you give one concrete example from your own practice?"
+        )
         _append_assistant(fq)
         st.session_state.awaiting_canonical_reask = True
         return
