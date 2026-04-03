@@ -95,7 +95,7 @@ def _lang_hint() -> str:
     return str(st.session_state.get("response_language") or "English")
 
 
-def _reset_interview(block_id: int, use_preset: bool) -> None:
+def _reset_interview(block_id: int) -> None:
     st.session_state.flow = FlowState(
         main_phase=MainPhase.SCOPING,
         diagram_step=1,
@@ -107,11 +107,9 @@ def _reset_interview(block_id: int, use_preset: bool) -> None:
         canonical_step_index=0,
         canonical_reask_used=False,
         last_a16=None,
-        last_a19=None,
     )
     st.session_state.messages = []
     st.session_state.block_id = block_id
-    st.session_state.use_preset = use_preset
     st.session_state.opening_generated = False
     st.session_state.awaiting_canonical_reask = False
     st.session_state.agent_logs = []
@@ -134,10 +132,7 @@ def _ensure_opening() -> None:
         return
     runner = _runner()
     lang = _lang_hint()
-    if st.session_state.use_preset:
-        text = runner.run_a14(block, lang)
-    else:
-        text = runner.run_a15(block, lang)
+    text = runner.run_a14(block, lang)
     _append_assistant(text)
     st.session_state.opening_generated = True
     st.session_state.flow.scoping_wait = ScopingWait.OPENING
@@ -176,7 +171,7 @@ def _handle_scoping_user_message(user_text: str) -> None:
             return
         flow.diagram_step = 2
         _append_assistant(runner.run_a18(block, result, msgs, lang))
-        # A18 no longer asks a question — go straight to canonical with all phases.
+        # After A18, go straight to canonical with all phases (no separate scope-negotiation step).
         flow.diagram_step = 3
         indices = all_phase_indices(block)
         flow.selected_phase_indices = indices
@@ -431,7 +426,7 @@ def main() -> None:
 
     st.title("Research-block expert interview")
     st.caption(
-        "Scoping flow A14–A22; interview questions are **synthesized** from JSON step briefs using the respondent’s stated role and domain (example job titles in the block are indicative only)."
+        "Scoping A14–A18, bridges A22; questions **synthesized** by CANONICAL_Q from block/phase/focus (example job titles in the block are indicative only)."
     )
 
     if not st.session_state.interview_started:
@@ -447,14 +442,10 @@ def main() -> None:
 
         st.subheader("Step 2: research block")
         choice = st.selectbox("Choose block", range(len(labels)), format_func=lambda i: labels[i])
-        use_preset = st.checkbox(
-            "Use block title as preset topic (A14). Uncheck to negotiate topic first (A15).",
-            value=True,
-        )
         if st.button("Start interview", type="primary"):
             st.session_state.openrouter_model_id = chosen_model
             st.session_state.interview_started = True
-            _reset_interview(ids[choice], use_preset)
+            _reset_interview(ids[choice])
             st.rerun()
         return
 

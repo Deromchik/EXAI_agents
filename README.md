@@ -1,6 +1,6 @@
 # EXAI Research Interview
 
-Streamlit app for structured expert interviews using `content/research_blocks.json`, scoping agents A11–A22, and canonical questions from the JSON corpus.
+Streamlit app for structured expert interviews using `content/research_blocks.json`, scoping agents (A11, A13–A18, A22) plus CANONICAL_Q / CANONICAL_DEPTH for synthesized phase questions.
 
 ## Local setup
 

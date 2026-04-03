@@ -1,9 +1,4 @@
-from state_machine import (
-    advance_canonical_position,
-    decide_after_a16,
-    decide_after_a19,
-    resolve_phase_indices_from_scope_areas,
-)
+from state_machine import advance_canonical_position, decide_after_a16
 
 
 def test_advance_subset_phases():
@@ -28,23 +23,3 @@ def test_decide_after_a16_should_agent_reask_forces_a17():
         "focus_specificity_score": 1.0,
     }
     assert decide_after_a16(r, 0.5) == "a17"
-
-
-def test_decide_after_a19_should_agent_reask_forces_a20():
-    r = {
-        "answer_understanding_score": 1.0,
-        "should_agent_reask": 1,
-        "scope_agreement_score": 1.0,
-    }
-    assert decide_after_a19(r, 0.5) == "a20"
-
-
-def test_resolve_scope_areas():
-    block = {
-        "phases": [
-            {"title": "Alpha phase"},
-            {"title": "Beta"},
-        ]
-    }
-    assert resolve_phase_indices_from_scope_areas(block, None) == [0, 1]
-    assert resolve_phase_indices_from_scope_areas(block, ["Beta"]) == [1]

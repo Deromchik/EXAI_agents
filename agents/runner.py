@@ -133,7 +133,7 @@ DEFAULT_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini"
 
 # Agents that return JSON with string fields — enforce language on those strings too.
-_JSON_LANGUAGE_AGENTS = frozenset({"A16", "A19", "CANONICAL_DEPTH"})
+_JSON_LANGUAGE_AGENTS = frozenset({"A16", "CANONICAL_DEPTH"})
 
 
 def _apply_response_language(system: str, language: str, agent_id: str) -> str:
@@ -147,8 +147,8 @@ def _apply_response_language(system: str, language: str, agent_id: str) -> str:
     if agent_id in _JSON_LANGUAGE_AGENTS:
         block += (
             f"\nFor the JSON object, every string value (including extracted_focus_area, "
-            f"extended_focus_area, low_score_reason, follow_up_question, scope_areas entries, "
-            f"suggested_modification, exception_knowledge if present) MUST be in **{lang}**. "
+            f"extended_focus_area, low_score_reason, follow_up_question, exception_knowledge "
+            f"if present) MUST be in **{lang}**. "
             f"JSON keys stay in English; numeric/boolean types unchanged."
         )
     return system + block
@@ -240,7 +240,6 @@ class AgentRunner:
     # --- Agents ----------------------------------------------------------
 
     def run_a14(self, block: dict, language_hint: str) -> str:
-        roles = "\n".join(f"- {r}" for r in block["role_titles"])
         duration = estimate_session_label(block)
         user = (
             f"Language: {language_hint}\n"
@@ -250,25 +249,9 @@ class AgentRunner:
             f"Estimated session duration: {duration} — use this figure when mentioning how long the interview takes.\n"
             f"Block title: {block['title']}\n"
             f"Audience: {block['audience']}\n"
-            f"Roles:\n{roles}\n"
             f"Phases (with phase_id):\n{_phase_lines_for_prompt(block)}"
         )
         return self._complete("A14", prompts.SYSTEM_A14, user, language_hint)
-
-    def run_a15(self, block: dict, language_hint: str) -> str:
-        duration = estimate_session_label(block)
-        user = (
-            f"Language: {language_hint}\n"
-            f"Research block_id: {block['block_id']}\n"
-            f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
-            f"Corpus stages in this block: {len(block['phases'])} (one stage per phase_id).\n"
-            f"Estimated session duration: {duration} — use this figure when mentioning how long the interview takes.\n"
-            f"Block title: {block['title']}\n"
-            f"The session will use canonical questions from this block once scope is set.\n"
-            f"Ask the user for their topic and background.\n"
-            f"Phases (with phase_id):\n{_phase_lines_for_prompt(block)}"
-        )
-        return self._complete("A15", prompts.SYSTEM_A15, user, language_hint)
 
     def run_a16(
         self, block: dict, user_answer: str, messages: list[dict[str, str]], language_hint: str
@@ -350,83 +333,6 @@ class AgentRunner:
             "STRICT: no questions anywhere in the message; no question marks; do not start the first interview topic here."
         )
         return self._complete("A18", prompts.SYSTEM_A18, user, language_hint)
-
-    def run_a19(
-        self,
-        block: dict,
-        user_answer: str,
-        messages: list[dict[str, str]],
-        language_hint: str,
-    ) -> dict[str, Any]:
-        phase_titles = [ph["title"] for ph in block["phases"]]
-        user = (
-            f"Language: {language_hint}\n"
-            f"Research block_id: {block['block_id']}\n"
-            f"Block: {block['title']}\n"
-            f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
-            f"Phase titles (order): {phase_titles}\n"
-            f"Conversation:\n{_format_history(messages)}\n"
-            f"User reply to scope proposal:\n{user_answer}"
-        )
-        raw = self._complete("A19", prompts.SYSTEM_A19, user, language_hint)
-        parsed = _extract_json_object(raw)
-        if self._log_sink:
-            self._log_sink[-1]["output_parsed"] = parsed
-        return parsed
-
-    def run_a20(
-        self,
-        suggested_modification: str,
-        messages: list[dict[str, str]],
-        language_hint: str,
-        block: dict | None = None,
-    ) -> str:
-        ctx = ""
-        if block is not None:
-            ctx = (
-                f"Research block_id: {block['block_id']}\n"
-                f"Block title: {block['title']}\n"
-                f"Phase map (phase_id → title): {_phase_map_for_prompt(block)}\n"
-            )
-        user = (
-            f"Language: {language_hint}\n"
-            f"{ctx}"
-            f"suggested_modification: {suggested_modification}\n"
-            f"Conversation:\n{_format_history(messages)}"
-        )
-        return self._complete("A20", prompts.SYSTEM_A20, user, language_hint)
-
-    def run_a21(
-        self,
-        block: dict,
-        phase_indices: list[int],
-        language_hint: str,
-    ) -> str:
-        rows = []
-        for i in phase_indices:
-            ph = block["phases"][i]
-            pid = ph.get("phase_id", i)
-            rows.append(f"phase_id={pid!r} | {ph['title']}")
-        rows_txt = "\n".join(rows)
-        user = (
-            f"Language: {language_hint}\n"
-            f"Research block_id: {block['block_id']}\n"
-            f"Block title: {block['title']}\n"
-            f"Selected corpus phases (in order):\n{rows_txt}\n"
-            f"Write the short transition per system instructions. Do not list interview questions."
-        )
-        return self._complete("A21", prompts.SYSTEM_A21, user, language_hint)
-
-    def localize_canonical_question(self, source_question: str, language_hint: str) -> str:
-        lang = (language_hint or "English").strip() or "English"
-        if lang.lower() == "english":
-            return source_question.strip()
-        user = (
-            f"Mandatory response language: {lang}\n"
-            f"Source language of the corpus question: English\n"
-            f"Source question:\n{source_question.strip()}"
-        )
-        return self._complete("A22", prompts.SYSTEM_A22, user, language_hint)
 
     def run_synthesize_canonical_question(
         self,

@@ -1,368 +1,185 @@
 ================================================================================
-PIPELINE АГЕНТІВ (Streamlit-додаток EXAI_Agents) ТА АНАЛОГІЯ З system_prompt_builder.py
+PIPELINE АГЕНТІВ: EXAI_Agents (Streamlit) vs system_prompt_builder.py
 ================================================================================
-Документ описує послідовність роботи агентів у поточному проєкті та показує, як
-вона відповідає (і чим відрізняється від) логіки з файлу system_prompt_builder.py.
-Додано розділ з детальним поясненням кожного системного промпту (agents/prompts.py).
+Оновлено під фактичну оркестрацію в app.py + state_machine.py + agents/runner.py.
+system_prompt_builder.py у репозиторії не імпортується з app.py — це паралельний шар
+промптів для іншого рушія (7 стадій); нижче — зіставлення за змістом і відмінності.
 
 --------------------------------------------------------------------------------
-1. ЩО РОБИТЬ ПОТОЧНИЙ ДОДАТОК (app.py + state_machine + agents/runner)
+1. АЛГОРИТМ EXAI_Agents (актуальний)
 --------------------------------------------------------------------------------
 
-1.1 Джерела даних
-- Канонічні питання інтерв’ю: content/research_blocks.json (блок → фази з
-  **phase_id** → кроки general / deepening / drilling). Модель їх НЕ вигадує —
-  текст питання береться з JSON (за потреби лише **локалізується** для UI).
-- Системні промпти агентів: agents/prompts.py (константи SYSTEM_A11, SYSTEM_A13,
-  SYSTEM_A14 … SYSTEM_A22, SYSTEM_CANONICAL_DEPTH; також вбудовані фрагменти
-  RESEARCH_BLOCK_CORPUS_MODEL, QUESTIONS_INTERVIEW_STYLE, ANCHOR_*).
-- Виклик LLM: agents/runner.py через OpenRouter (OpenAI-сумісний клієнт).
-- Мова відповіді: до кожного system-додатку в runner додається блок «Response
-  language (mandatory)» (аналог languagePrompt у builder).
+Джерела
+  • Корпус тем: content/research_blocks.json — блок, phases[] з phase_id та title.
+    Текстів готових питань у JSON немає; питання генерує LLM (CANONICAL_Q) з опорою
+    на block title, phase title, крок general|deepening|drilling, фокус з A16 та історію.
+  • Промпти: agents/prompts.py (SYSTEM_*).
+  • Виклики: agents/runner.py → OpenRouter; мова — response_language + суфікс у runner.
+  • Оціночний поріг скопінгу: score_threshold (state_machine, сайдбар); floor розуміння
+    відповіді: UNDERSTANDING_FLOOR = 0.7 для гілки A13.
+  • Тривалість сесії в тексті: content/research_loader.py — DEFAULT_SESSION_MINUTES (фіксовано).
 
-1.2 Фази життєвого циклу сесії (високорівнево)
+Модель «стадій» інтерв’ю
+  • Одна стадія сесії = одна phase з JSON; послідовність фаз — за block.phases.
+  • У кожній фазі рівно 3 кроки: general → deepening → drilling (див. state_machine.STEP_ORDER).
+  • У поточному app після скопінгу завжди обираються усі фази блоку (all_phase_indices).
 
-  Модель інтерв’ю (корпус):
-  - **Стадія сесії** = **фаза** блоку; кількість стадій = кількість записів phases
-    у вибраному блоці; кожна фаза має стабільний **phase_id** (рядок, напр. "2-1").
-  - У межах однієї фази завжди три кроки: general → deepening → drilling (текст з JSON).
+Схема потоку (ASCII)
 
-  [Налаштування]
-    Користувач обирає модель OpenRouter, блок дослідження, чи використовувати
-    пресет теми (A14) чи відкрите узгодження теми (A15).
+  [SETUP] користувач: блок, модель, мова
+       |
+       v
+  A14 (preset topic)  --->  USER (роль / досвід)
+       |
+       v
+  A16 (JSON, не в чаті) ---> decide_after_a16
+       |
+       +-- answer_understanding < 0.7 ----> A13 ---> USER (цикл знову через A16)
+       |
+       +-- should_agent_reask або слабкий purpose/focus vs threshold ----> A17 ---> USER (цикл)
+       |
+       +-- OK ----> A18 (огляд фаз, без питань на зміну плану)
+                 |
+                 +----> у ТОМУ Ж ході: main_phase = CANONICAL
+                       + перше питання: CANONICAL_Q (_display_canonical_question)
 
-  [Фаза SCOPING — діаграма A14–A22]
-    Step 1 (мета та фокус):
-      - Після старту: A14 або A15 → перше повідомлення асистента.
-      - Відповідь користувача → A16 (JSON: оцінки, extracted_focus_area, …).
-      - Гілки за state_machine.decide_after_a16:
-          * answer_understanding_score < 0.7 (UNDERSTANDING_FLOOR) → A13
-          * purpose та focus нижче порогу score_threshold (сайдбар) → A17
-          * інакше → Step 2, A18 (пропозиція: які phase_id / фази блоку взяти в сесію)
+  [CANONICAL] для кожного (phase, step):
+       показати питання (заголовок фази + мітка кроку + текст від CANONICAL_Q)
+       USER
+       якщо це відповідь після follow-up (awaiting_canonical_reask): лише advance, без depth
+       інакше: CANONICAL_DEPTH (JSON)
+            +-- should_reask=1 і deep<0.7 і re-ask ще не використано: follow_up в чат
+            +-- інакше: advance_canonical_position
+       між фазами (next_phase): A22 (міст) + наступне питання CANONICAL_Q
+       після останнього кроку: A11
 
-    Step 2 (узгодження scope сесії — вибір фаз блоку):
-      - Відповідь на A18 → A19 (JSON: scope_agreement_score, scope_areas, …).
-      - Гілки за decide_after_a19:
-          * незрозуміло → A13
-          * scope_agreement низький → A20
-          * інакше → Step 3: A21 (короткий міст, опційно) + **одразу** перехід у
-            CANONICAL і показ **першого** канонічного питання (без окремого екрану
-            з переліком усіх питань і без кнопок «продовжити» після A21).
-
-    A13 / A17 / A20 при потребі можуть отримувати в user message контекст блоку
-    (block_id, phase map) — див. agents/runner.py.
-
-  [Фаза CANONICAL]
-    Для кожної обраної фази (phase_id) та кожного кроку (general → deepening → drilling):
-      - Питання показується в чаті (за мови ≠ English — через A22 **Task B**:
-        переклад/адаптація тексту з JSON; оцінка глибини використовує **оригінальний**
-        рядок з JSON).
-      - Відповідь → SYSTEM_CANONICAL_DEPTH (JSON: deep_knowledge_level, should_reask, …).
-      - За умов should_reask=1 і ще не використаного re-ask у цьому кроці — одне
-        follow_up_question, інакше перехід до наступного кроку/фази.
-    Між фазами блоку: A22 **Task A** (короткий міст; у user message — phase_id + title).
-    Після останнього кроку: A11 (фінальне повідомлення).
-
-1.3 Відповідність імен: EXAI_агент ↔ ключ у system_prompt_builder (за змістом)
-
-  EXAI (код)          system_prompt_builder.py (типові ключі)
-  ----------------    --------------------------------------------------
-  A14 / run_a14       a_14_prompt (Stage 1) — перше питання / відкриття
-  A15 / run_a15       a_15_prompt — відкриття без пресету теми
-  A16 / run_a16       a_16_prompt — аналіз відповіді (JSON, скори, фокус)
-  A13 / run_a13       різні гілки «уточнення / did I get it»
-  A17 / run_a17       a_17_prompt — follow-up після відкриття
-  A18 / run_a18       пропозиція scope (у EXAI — явно **фази блоку + phase_id**)
-  A19 / run_a19       a_19_prompt — аналіз відповіді на пропозицію (JSON)
-  A20 / run_a20       текстовий follow-up до scope
-  A21 / run_a21       у builder немає прямого аналога; у EXAI — лише **короткий**
-                      handoff перед першим corpus-питанням (без списку питань)
-  A11 / run_a11       закриття сесії (аналог тону Stage 7)
-  A22 / run_a22       **два режими**: міст між фазами (Task A) **або** локалізація
-                      corpus-питання для чату (Task B); agent_id у логах «A22»
-  CANONICAL_DEPTH     схоже на a_22 у final step — глибина + re-ask; окремий agent_id
-                      «CANONICAL_DEPTH» у логах
-
-У поточному додатку номери «A14» тощо — це зручні мітки в коді; у builder ключі
-мають вигляд a_14_prompt і повертаються з prompt_builder() у словнику.
-
+Примітки
+  • A22 — лише міст між фазами (run_a22); питання одразу мовою сесії з CANONICAL_Q.
 
 --------------------------------------------------------------------------------
-2. ЯК ПРАЦЮЄ system_prompt_builder.py (структура)
+2. АЛГОРИТМ system_prompt_builder.py (структура)
 --------------------------------------------------------------------------------
 
-2.1 Функція
-  prompt_builder(stageNumber, stageOutcomes, language)
+Функція: prompt_builder(stageNumber, stageOutcomes, language)
 
-2.2 Що вона будує
-- Мовний суфікс: languagePrompt (жорстка мова відповіді).
-- outcomesDescription: великий текст про поле outcomes — які метрики накопичуються
-  після стадій 1–6; розширюється залежно від stageNumber (additionalOutcomes1…5).
-- stage_final_step — словник промптів, який підмішується в КОЖНУ стадію:
-    a_21_prompt — одне «глибоке» інтерв’ю-питання на крок (динамічно під поточну
-                  стадію через currentStageText[stageNumber-1])
-    a_22_prompt — аналітик: JSON (deep_knowledge_level, should_agent_reask, …)
-    a_23_prompt — текстовий follow-up за low_score_reason (аналог «допитати»)
+Що повертається
+  • Для stageNumber 1..7 — словник stages[str(N)] (підмножина ключів a_*_prompt для цієї стадії),
+    у який злито stage_final_step:
+      a_21_prompt — одне «глибоке» інтерв’ю-питання на крок (контекст поточної стадії).
+      a_22_prompt — JSON-оцінка глибини відповіді (should_agent_reask, deep_knowledge_level, …).
+      a_23_prompt — текстовий follow-up за low_score_reason (уточнення).
+    Додаткові ключі залежать від стадії (наприклад a_24 наприкінці Stage 1 — вхід у Stage 2).
+  • outcomesDescription пояснює накопичуване поле outcomes (метрики з різних стадій).
+  • languagePrompt — жорстка мова відповіді.
 
-- stages — словник '1'…'7': для кожної стадії свій набір a_XX_prompt (a_14, a_15,
-  a_16, … a_20, a_24, тощо залежно від стадії).
+Хто крутить граф
+  • Зовнішній застосунок сам вирішує, який a_* викликати після відповіді юзера і як
+    оновлювати outcomes; builder лише видає тексти промптів на кожну з 7 стадій.
 
-2.3 Повернення
-  prompts = stages.get(str(stageNumber), {})
-  return prompts
-
-Тобто для стадії N повертається лише підсловник цієї стадії (у який уже злито
-**stage_final_step, тобто a_21/a_22/a_23 присутні разом з a_14…).
-
-2.4 Хто викликає prompt_builder у продакшені
-У цьому репозиторії app.py НЕ імпортує system_prompt_builder.py — це окремий/наслідковий
-модуль (імпорт з ...agents вказує на пакетну структуру іншого проєкту). Аналогія
-змістовна: обидва підходи описують «набір системних промптів на крок інтерв’ю».
-
+Стадії (фіксовані назви в builder)
+  Stage 1 Introduction & Scoping … Stage 7 Conclusion — не прив’язані до research_blocks.json
+  у цьому репозиторії.
 
 --------------------------------------------------------------------------------
-3. ПОРІВНЯЛЬНА ТАБЛИЦЯ: ОДНА І ТА САМА ІДЕЯ, РІЗНА РЕАЛІЗАЦІЯ
+3. ТРИ ТАБЛИЦІ: ЛИШЕ PIPELINE АГЕНТІВ / ПРОМПТІВ
+--------------------------------------------------------------------------------
+Нижче — послідовність без змішування двох систем в одній сітці. Порівняння ролей
+див. розділ 4.
+
+Таблиця 1. EXAI_Agents (app.py) — хто за чим іде
+───────────────────────────────────────────────
+
+Частина А. Скопінг (до фази CANONICAL)
+
+  №   Агент          У чат?   Що далі (типово)
+  ──  ─────────────  ───────  ─────────────────────────────────────────────
+  1   A14            так      очікується відповідь USER
+  2   A16            ні       гілка: A13 або A17 або рядок 3
+  —   A13            так*     USER → знову рядок 2 (*якщо незрозуміло текст)
+  —   A17            так*     USER → знову рядок 2 (*якщо слабкий фокус / re-ask)
+  3   A18            так      у тому ж обробнику одразу CANONICAL_Q (рядок Б1)
+
+Частина Б. Canonical (кожна фаза JSON: general → deepening → drilling)
+
+  №   Агент           У чат?   Що далі (типово)
+  ──  ──────────────  ───────  ─────────────────────────────────────────────
+  B1  CANONICAL_Q     так      текст питання → USER
+  B2  CANONICAL_DEPTH ні       JSON; або follow-up у чат, або перехід далі
+  —   (текст з        так*     один re-ask на крок (*умова в app.py)
+       CANONICAL_DEPTH)
+  B3  USER (відповідь після re-ask)  —    advance без повторного B2
+  B4  A22             так*     міст між фазами (*лише при переході next_phase)
+  B5  A11             так      кінець сесії (усі кроки пройдено)
+
+
+Таблиця 2. system_prompt_builder — Stage 1 (ключі в stages['1'], порядок у файлі)
+────────────────────────────────────────────────────────────────────────────────
+Один з двох перших ключів на вибір рушія. Порядок рядків = порядок ключів у словнику;
+фактичні гілки (наприклад після a_16: спочатку a_17 чи одразу a_18) визначає зовнішній
+рушій, а не цей список.
+
+  №   Ключ           Вихід LLM   Коротка роль
+  ──  ─────────────  ──────────  ─────────────────────────────────────────────
+  1a  a_14_prompt    текст       відкриття з пресетом main_topic
+  1b  a_15_prompt    текст       відкриття без пресету теми
+  2   a_16_prompt    JSON        аналіз відповіді на opening
+  3   a_17_prompt    текст       follow-up по фокусу (після слабких скорів)
+  4   a_18_prompt    текст       перехід: готовність обговорити фокус глибше
+  5   a_19_prompt    JSON        аналіз відповіді після a_18 (scope / узгодження)
+  6   a_20_prompt    текст       follow-up, якщо a_19 вказав на неясність
+  —   (далі злито stage_final_step — ті самі a_21…a_23, що й у табл. 3)
+  7   a_21_prompt    текст       одне інтерв’ю-питання (final step)
+  8   a_22_prompt    JSON        глибина відповіді, re-ask
+  9   a_23_prompt    текст       текстовий follow-up за low_score_reason
+  10  a_24_prompt    текст       перехід до Stage 2 (наступна стадія продукту)
+
+  Примітка: окремого ключа a_13 у builder немає; «уточнити незрозуміле» рушій
+  може реалізувати іншим промптом або повторним викликом a_17 тощо.
+
+
+Таблиця 3. system_prompt_builder — цикл питання всередині стадії (stage_final_step)
+──────────────────────────────────────────────────────────────────────────────────
+Цей блок зливається в stages['1']…['6'] (і подібно в інших стадіях). Рушій крутить
+цикл, доки не виконані цілі стадії; потім — ключі на кшталт a_24 (залежно від N).
+
+  Крок   Ключ          Вихід LLM   Хто відповідає / логіка
+  ─────  ────────────  ──────────  ───────────────────────────────────────────
+  C1     a_21_prompt   текст       USER (одне питання експерту)
+  C2     a_22_prompt   JSON        рушій оцінює відповідь
+  C3     a_23_prompt   текст*      USER* (*якщо потрібен follow-up за a_22)
+  C4     (повтор)      —           знову C1 з оновленою історією / outcomes
+
+  Після завершення стадії зовнішній код перемикає stageNumber (наприклад Stage 1
+  → a_24_prompt, далі Stage 2 зі своїм набором a_16…).
+
+--------------------------------------------------------------------------------
+4. ТАБЛИЦЯ: ВІДПОВІДНІСТЬ ІМЕН (з обмеженнями)
 --------------------------------------------------------------------------------
 
-Аспект                          EXAI Streamlit app              system_prompt_builder
-------------------------------  -----------------------------  ---------------------------
-Оркестрація                     Python: app.py + state_machine Зовнішній код викликає
-                                (явний граф станів)            prompt_builder(stage,…)
-Канонічний контент              research_blocks.json           Зазвичай всередині промптів
-                                (блок / phase_id / крок)       або логіка стадій 1–7
-Кількість «рівнів»              Блок → N фаз (phase_id) →       7 стадій × багато підкроків
-                                3 кроки на фазу
-Мова UI / промптів              Сайдбар response_language +    language у prompt_builder
-                                суфікс у runner.py
-Фінальні кроки кроку corpus     CANONICAL_DEPTH + optional     a_21 + a_22 + a_23
-                                re-ask у app.py
-Поріг «достатньо добре»         score_threshold (сайдбар)      Зашиті правила в тексті a_22
-Вихід аналізатора               JSON у A16, A19, depth         JSON у a_16, a_19, a_22 тощо
-
+EXAI (runner / лог)     | Зв’язок із system_prompt_builder
+------------------------|--------------------------------------------------
+A14                     | a_14_prompt (Stage 1) — відкриття; a_15_prompt у builder залишається для інших рушіїв, у EXAI не викликається
+A16                     | a_16_prompt (Stage 1) — JSON-аналіз opening; схема полів інша
+A13                     | Логіка уточнення змістово як навколо a_16
+A17                     | a_17_prompt — follow-up по фокусу
+A18                     | НЕ еквівалент Stage 1 a_18: у EXAI — roadmap фаз JSON; у builder a_18 — перехід до глибини фокусу
+A22                     | У EXAI — міст між фазами корпусу. У builder a_22 з stage_final_step — JSON глибини (аналог CANONICAL_DEPTH)
+CANONICAL_Q             | Немає окремого ключа; найближче за роллю — динамічне питання з a_21 + корпусна прив’язка EXAI
+CANONICAL_DEPTH         | Змістово як a_22 з stage_final_step (JSON + re-ask)
+A11                     | Тон і роль закриття як у Stage 7 / conclusion-промптах
 
 --------------------------------------------------------------------------------
-4. ПОСЛІДОВНІСТЬ (PIPELINE) У ВИГЛЯДІ СХЕМИ (EXAI)
+5. ДЕ ДИВИТИСЯ В КОДІ
 --------------------------------------------------------------------------------
 
-  START
-    → [A14 | A15] відкриття
-    → USER
-    → [A16] оцінка
-         → [A13] якщо незрозуміло
-         → [A17] якщо слабкий purpose/focus
-         → [A18] якщо OK (перелік фаз + phase_id + підтвердження/корективи)
-    → USER
-    → [A19] оцінка scope
-         → [A13]
-         → [A20]
-         → [A21] короткий міст (опційно) + одразу CANONICAL
-    → CANONICAL: питання з JSON (локалізація через A22 Task B, якщо не English)
-         → [CANONICAL_DEPTH] → можливий один re-ask
-         → [A22 Task A] між фазами (phase_id)
-    → [A11] кінець
+  app.py              — _ensure_opening, _handle_scoping_user_message,
+                        _handle_canonical_user_message, _advance_canonical_display
+  state_machine.py    — decide_after_a16, advance_canonical_position, FlowState, STEP_ORDER
+  agents/runner.py    — run_a*, run_synthesize_canonical_question, run_canonical_depth
+  agents/prompts.py   — повні тексти SYSTEM_* та CANONICAL
+  system_prompt_builder.py — prompt_builder(), stage_final_step, stages['1']…['7']
 
-У system_prompt_builder відповідна логіка розмазана по стадіях 1–7 і по ключах
-a_*; зовнішній рушій повинен вирішувати, який ключ викликати після відповіді юзера
-та як оновлювати outcomes — у EXAI те саме роль виконують FlowState + функції
-_handle_scoping_user_message / _handle_canonical_user_message.
-
-
---------------------------------------------------------------------------------
-5. ФАЙЛИ ДЛЯ ПОДАЛЬШОГО ЧИТАННЯ
---------------------------------------------------------------------------------
-
-- app.py                    — UI, session_state, виклики runner, пороги
-- state_machine.py          — decide_after_a16 / decide_after_a19, навігація по фазах
-- agents/prompts.py         — текст SYSTEM_* (аналог тіл a_*_prompt)
-- agents/runner.py          — збір user-повідомлення + виклик LLM, phase map
-- content/research_blocks.json — канонічні питання (у builder такого окремого шару немає)
-- system_prompt_builder.py  — монолітний генератор усіх a_*_prompt для стадій 1–7
-
-
---------------------------------------------------------------------------------
-6. ДЕТАЛЬНИЙ ОПИС ПРОМПТІВ (agents/prompts.py)
---------------------------------------------------------------------------------
-
-Усі промпти написані англійською; фактична мова виходу задається у runner через
-суфікс після system. До багатьох промптів **динамічно підставляються** фрагменти
-RESEARCH_BLOCK_CORPUS_MODEL, ANCHOR_*, QUESTIONS_INTERVIEW_STYLE (див. початок
-файлу prompts.py).
-
-6.0 Спільні вставки (не окремі виклики LLM)
-
-  RESEARCH_BLOCK_CORPUS_MODEL
-    Пояснює моделі правила цього продукту: контент з research_blocks.json;
-    одна «стадія інтерв’ю» = одна фаза з phase_id; у фазі рівно три кроки питань
-    (general → deepening → drilling); не вигадувати абстрактну «навчальну програму»
-    як у чужих 7-stage продуктах.
-
-  QUESTIONS_INTERVIEW_STYLE
-    Тон і стиль (наближено до questions_interview_style у builder): природньо,
-    по одному головному зверненню (крім випадків, де явно потрібен нумерований
-    список фаз), без підручникових «поясни все з нуля», без мета-фраз про AI.
-
-  ANCHOR_SCOPING_OPENING | ANCHOR_SCOPING_PHASE_PICK | ANCHOR_SCOPING_TO_CORPUS |
-  ANCHOR_CORPUS_QA | ANCHOR_SESSION_CLOSE
-    Короткі рядки «де ми зараз у потоці»: відкриття / вибір фаз / handoff до JSON-
-    питань / канонічне опитування / закриття.
-
-
-6.1 SYSTEM_A14 — Agent A14 (Initial_preset_Scope_Settling)
-
-  Призначення: перше повідомлення асистента, коли **тема пресетна** (назва блоку з JSON).
-  Вміст промпту: корпусна модель + якір scoping/opening; роль «preset-topic opening».
-  Завдання моделі (plain text, одне повідомлення):
-    - назвати тему блоку й аудиторію;
-    - пояснити, що сесія йде від research block і далі — стадії по phase_id
-      з трьома рівнями питань на фазу;
-    - попросити опис ролі та досвіду;
-    - **заборона** вгадувати посади / «якщо ви CEO…».
-  User message у runner: block_id, phase map, кількість фаз, title, audience, roles,
-    нумерований список фаз з phase_id.
-  Виклик: run_a14(block, language_hint).
-  Аналог у builder: a_14_prompt (Stage 1), але з прив’язкою до JSON-блоку та phase_id.
-
-
-6.2 SYSTEM_A15 — Agent A15 (Initial_Scope_Settling)
-
-  Призначення: перше повідомлення, коли **тема не пресетна** (чекбокс у UI), але блок
-  уже обраний — користувач має назвати свою експертизу ширше, ніж лише заголовок блоку.
-  Відмінність від A14: не акцент на пресеті заголовка, а запит теми/бекграунду; у user
-  message теж передається phase map блоку, щоб модель знала майбутній корпус.
-  Виклик: run_a15(block, language_hint).
-
-
-6.3 SYSTEM_A16 — Agent A16 (аналітик відкриття, JSON)
-
-  Призначення: оцінити **відповідь на відкриття** (diagram Step 1 — purpose & focus).
-  Вхід: block_id, title, phase map, історія, остання відповідь користувача.
-  Вихід (лише JSON, ключі фіксовані — парсить runner):
-    - answer_understanding_score — чи зрозуміло сформульовано відповідь;
-    - purpose_understanding_score — чи відповідає запиту про експертизу відносно
-      **заголовка блоку**;
-    - extracted_focus_area — стислий фокус (мова = response language);
-    - focus_specificity_score — наскільки вузький/конкретний фокус;
-    - low_score_reason — якщо purpose або focus < 0.7, підказка для A17 (~20–30 слів),
-      інакше "".
-  Особливі правила: агрегація фокусу з **усієї** історії; корекції користувача;
-    «виснаження» (користувач каже, що більше додати не може) — не блокувати прогрес.
-  Гілки в app: decide_after_a16(result, score_threshold) → a13 / a17 / advance до A18.
-  Виклик: run_a16(block, user_answer, messages, language_hint).
-  Аналог: a_16_prompt у builder (інша схема JSON у builder, тут спрощена під EXAI).
-
-
-6.4 SYSTEM_A13 — Agent A13 (Did_I_get_it_right?)
-
-  Призначення: **одне** ввічливе уточнення, коли answer_understanding_score низький
-  (незрозумілий останній меседж) на кроці opening або scope.
-  Вхід: опційно block_id + phase map (якщо передано block у runner), історія, «unclear answer».
-  Вихід: plain text, одне питання або короткий абзац з одним чітким запитом.
-  Виклик: run_a13(messages, user_answer, language_hint, block=block).
-
-
-6.5 SYSTEM_A17 — Agent A17 (Follow_up_question_for_A14)
-
-  Призначення: **одне** уточнювальне питання, коли відповідь зрозуміла, але purpose/focus
-  нижче порогу; підсилити фокус без дослівного цитування low_score_reason.
-  Вхід: low_score_reason, історія, опційно контекст блоку (phase map).
-  Правила: не повторювати той самий тип деталі, що вже просили; перший follow-up може
-    починатися тепліше, наступні — нейтральніше.
-  Виклик: run_a17(low_score_reason, messages, language_hint, block=block).
-
-
-6.6 SYSTEM_A18 — Agent A18 (Propose_Session_Scope)
-
-  Призначення: після успішного Step 1 запропонувати **які фази блоку** (які phase_id)
-  проходити в сесії; показати **нумерований список** з **phase_id** і назвою; одне
-  заключне питання — підтвердити план чи внести корективи (порядок, пропуск фази).
-  Вихід: plain text; **не** показувати повний текст канонічних питань з JSON.
-  User message: block_id, title, кількість стадій, extracted focus з A16, список фаз
-    з phase_id, історія.
-  Виклик: run_a18(block, a16_summary, messages, language_hint).
-  Чому видно `[phase_id "1-1"]` у чаті: у промпті є приклад форми рядка — модель інколи
-    копіює його буквально; це побічний ефект інструкції «кожен рядок має містити phase_id».
-
-
-6.7 SYSTEM_A19 — Agent A19 (аналітик відповіді на scope, JSON)
-
-  Призначення: зрозуміти відповідь користувача на пропозицію A18 і витягнути узгоджений
-    набір фаз для подальшого canonical-пайплайну.
-  Вхід: block_id, title, phase map, ordered titles, історія, відповідь на scope.
-  Вихід (JSON):
-    - answer_understanding_score;
-    - scope_agreement_score;
-    - scope_areas — список **назв фаз** (рядків) у домовленому порядку, мова = response
-      language; посилання на phase_id з контексту допомагають інтерпретувати «пропусти 2-2»;
-    - negotiation_needed;
-    - suggested_modification — якщо scope_agreement_score < 0.9, підказка для A20, інакше "".
-  Далі: resolve_phase_indices_from_scope_areas у state_machine мапить рядки на індекси фаз.
-  Виклик: run_a19(block, user_answer, messages, language_hint).
-
-
-6.8 SYSTEM_A20 — Agent A20 (Follow_up_question_for_A18)
-
-  Призначення: одне plain-text уточнення, коли узгодження scope слабке; вирівняти, які
-  phase_id / фази брати; не цитувати suggested_modification дослівно; не виписувати
-  повні тексти corpus-питань.
-  Вхід: suggested_modification, історія, опційно block + phase map.
-  Виклик: run_a20(suggested_modification, messages, language_hint, block=block).
-
-
-6.9 SYSTEM_A21 — Agent A21 (мінімальний handoff)
-
-  Призначення: після успішного A19 — **не більше одного** короткого переходу до «детальної»
-    частини; заборона перераховувати майбутні питання, просити «підтвердіть готовність»,
-    згадувати переклад/verbatim. Якщо нічого казати не треба — вивести лише крапку «.».
-  Після відповіді app **одразу** додає перше канонічне питання (перший обраний phase_id,
-    крок general).
-  User message: обрані фази з phase_id у runner.
-  Виклик: run_a21(block, phase_indices, language_hint).
-
-
-6.10 SYSTEM_A11 — Agent A11 (FinalMessageAgent)
-
-  Призначення: тепле завершення сесії після проходження corpus-кроків (або раннього
-    завершення, якщо передбачено в логіці app); **без нових питань**; 1–3 речення plain text.
-  User message: block_id, title, phase map, повна історія.
-  Виклик: run_a11(block, messages, language_hint).
-
-
-6.11 SYSTEM_A22 — Agent A22 (два режими за вмістом user message)
-
-  Це **один** system-промпт, але модель обирає режим за структурою user message:
-
-  Task A — Phase bridge
-    Умова: є «наступна фаза» (phase_id + title), **немає** блоку "Source question".
-    Завдання: 1–2 речення-міст перед наступним corpus-питанням; саме головне питання
-      не ставити (його показує app окремим повідомленням).
-    Виклик: run_a22(block, phase_index, language_hint).
-
-  Task B — Canonical question for display
-    Умова: у user message є "Source language" та "Source question".
-    Завдання: повернути **лише** текст того самого питання **мовою response language**
-      (локалізація для UI); без вступів і мета-коментарів.
-    Виклик: localize_canonical_question у runner → теж _complete("A22", …).
-
-  У логах обидва варіанти можуть мітитися як агент A22; розрізнення — по user payload.
-
-
-6.12 SYSTEM_CANONICAL_DEPTH — глибина відповіді на corpus-питання (JSON)
-
-  Призначення: після відповіді експерта на **фіксоване** питання з JSON оцінити глибину
-    і чи варто один раз поставити уточнення (re-ask) перед переходом далі.
-  Вхід: block_id, phase_id, назва фази, step key (general/deepening/drilling), текст
-    канонічного питання (англійський оригінал з JSON), уривок історії, відповідь user.
-  Вихід (JSON):
-    - deep_knowledge_level;
-    - should_reask — 0 або 1;
-    - follow_up_question — якщо re-ask, одне коротке питання мовою response language;
-    - low_score_reason — опційно для логів.
-  Логіка в app: якщо should_reask=1, ще не використано re-ask для цього кроку і
-    deep_knowledge_level < 0.7 — показується follow_up_question; інакше advance до
-    наступного кроку/фази.
-  agent_id у логах: "CANONICAL_DEPTH".
-  Виклик: run_canonical_depth(..., block=, phase_index=, step_key=).
-
+Детальний розбір кожного SYSTEM_* див. коментарі та секції всередині agents/prompts.py.
 
 ================================================================================
 Кінець документа
