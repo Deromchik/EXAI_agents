@@ -4,6 +4,7 @@ Streamlit app: block selection, scoping agents A11–A22, canonical questions fr
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import streamlit as st
@@ -26,6 +27,13 @@ from state_machine import (
     get_canonical_step_key,
 )
 from state_machine import DEFAULT_SCORE_THRESHOLD
+from interview_session import (
+    SESSION_EXPORT_FORMAT,
+    apply_block_to_import_result,
+    build_session_export_dict,
+    parse_session_object,
+    session_import_result_to_state_updates,
+)
 
 load_dotenv()
 
@@ -95,6 +103,13 @@ def _lang_hint() -> str:
     return str(st.session_state.get("response_language") or "English")
 
 
+def _sync_setup_model_index_from_session() -> None:
+    mid = st.session_state.get("openrouter_model_id")
+    ids = [p[0] for p in RECOMMENDED_OPENROUTER_MODELS]
+    if isinstance(mid, str) and mid in ids:
+        st.session_state.setup_model_preset_index = ids.index(mid)
+
+
 def _reset_interview(block_id: int) -> None:
     st.session_state.flow = FlowState(
         main_phase=MainPhase.SCOPING,
@@ -114,6 +129,7 @@ def _reset_interview(block_id: int) -> None:
     st.session_state.awaiting_canonical_reask = False
     st.session_state.agent_logs = []
     st.session_state.current_canonical_question_plain = ""
+    st.session_state.pop("_session_resume_handled_digest", None)
 
 
 def _append_assistant(text: str) -> None:
@@ -364,30 +380,97 @@ def main() -> None:
         value=float(st.session_state.score_threshold),
         step=0.05,
     )
+    msgs = list(st.session_state.get("messages") or [])
+    with st.sidebar.expander("Session backup & resume", expanded=False):
+        st.caption(
+            f"**JSON ({SESSION_EXPORT_FORMAT})** — same file for **download and upload**: "
+            "messages, `block_id`, flow state, `position` (phase_id, step_key, pending_turn), "
+            "language, model, temperature. TXT export is human-readable only (no resume)."
+        )
+        st.metric("Chat messages", len(msgs))
+        bid = st.session_state.get("block_id")
+        base = f"session_block{bid}" if bid is not None else "session"
+        export_obj = None
+        if st.session_state.interview_started and bid is not None:
+            blk = get_block_by_id(int(bid))
+            fl = st.session_state.flow
+            if isinstance(fl, FlowState) and blk is not None:
+                export_obj = build_session_export_dict(
+                    messages=msgs,
+                    block_id=int(bid),
+                    flow=fl,
+                    opening_generated=bool(st.session_state.get("opening_generated")),
+                    awaiting_canonical_reask=bool(st.session_state.get("awaiting_canonical_reask")),
+                    current_canonical_question_plain=str(
+                        st.session_state.get("current_canonical_question_plain") or ""
+                    ),
+                    response_language=str(st.session_state.get("response_language") or "English"),
+                    openrouter_model_id=st.session_state.get("openrouter_model_id"),
+                    llm_temperature=float(st.session_state.get("llm_temperature", 0.1)),
+                    block=blk,
+                )
+        st.download_button(
+            label="Download session (JSON)",
+            data=json.dumps(export_obj or {"format": SESSION_EXPORT_FORMAT, "messages": []}, ensure_ascii=False, indent=2),
+            file_name=f"{base}.json",
+            mime="application/json",
+            key="download_session_json",
+            disabled=export_obj is None,
+        )
+        st.download_button(
+            label="Download conversation (TXT)",
+            data=_conversation_export_txt(msgs),
+            file_name=f"{base}.txt",
+            mime="text/plain; charset=utf-8",
+            key="download_conversation_txt",
+            disabled=len(msgs) == 0,
+        )
+        up = st.file_uploader(
+            "Resume from session JSON",
+            type=["json"],
+            help=f"Use a file from “Download session (JSON)” ({SESSION_EXPORT_FORMAT}).",
+            key="session_resume_uploader",
+        )
+        if up is not None:
+            raw = up.getvalue()
+            digest = hashlib.sha256(raw).hexdigest()
+            if st.session_state.get("_session_resume_handled_digest") != digest:
+                try:
+                    obj = json.loads(raw.decode("utf-8"))
+                    result = parse_session_object(obj)
+                    if result.legacy_messages_only:
+                        st.warning(result.warnings[0])
+                        st.session_state._session_resume_handled_digest = digest
+                    else:
+                        block = get_block_by_id(result.block_id)
+                        if not block:
+                            st.error(
+                                f"No research block with block_id={result.block_id} in research_blocks.json."
+                            )
+                            st.session_state._session_resume_handled_digest = digest
+                        else:
+                            root = obj if isinstance(obj, dict) else {}
+                            extra_warn = apply_block_to_import_result(result, block, root)
+                            for key, val in session_import_result_to_state_updates(result).items():
+                                st.session_state[key] = val
+                            _sync_setup_model_index_from_session()
+                            for w in result.warnings + extra_warn:
+                                st.warning(w)
+                            st.success("Session restored. Continue in the chat.")
+                            st.session_state._session_resume_handled_digest = digest
+                            st.rerun()
+                except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                    st.error(f"Invalid JSON: {e}")
+                    st.session_state._session_resume_handled_digest = digest
+                except ValueError as e:
+                    st.error(str(e))
+                    st.session_state._session_resume_handled_digest = digest
+                except Exception as e:
+                    st.error(f"Could not restore session: {e}")
+                    st.session_state._session_resume_handled_digest = digest
+
     if st.session_state.interview_started:
         st.sidebar.caption(f"**Model:** `{st.session_state.get('openrouter_model_id', '')}`")
-        msgs = list(st.session_state.get("messages") or [])
-        with st.sidebar.expander("Conversation export", expanded=False):
-            st.caption("Only chat turns (user + assistant). Excludes agent logs and system prompts.")
-            st.metric("Messages", len(msgs))
-            bid = st.session_state.get("block_id")
-            base = f"conversation_block{bid}" if bid is not None else "conversation"
-            st.download_button(
-                label="Download conversation (JSON)",
-                data=json.dumps(msgs, ensure_ascii=False, indent=2),
-                file_name=f"{base}.json",
-                mime="application/json",
-                key="download_conversation_json",
-                disabled=len(msgs) == 0,
-            )
-            st.download_button(
-                label="Download conversation (TXT)",
-                data=_conversation_export_txt(msgs),
-                file_name=f"{base}.txt",
-                mime="text/plain; charset=utf-8",
-                key="download_conversation_txt",
-                disabled=len(msgs) == 0,
-            )
         logs = st.session_state.get("agent_logs") or []
         with st.sidebar.expander("Agent pipeline logs", expanded=False):
             st.caption(
@@ -443,6 +526,7 @@ def main() -> None:
         st.subheader("Step 2: research block")
         choice = st.selectbox("Choose block", range(len(labels)), format_func=lambda i: labels[i])
         if st.button("Start interview", type="primary"):
+            st.session_state.pop("_session_resume_handled_digest", None)
             st.session_state.openrouter_model_id = chosen_model
             st.session_state.interview_started = True
             _reset_interview(ids[choice])
@@ -457,6 +541,7 @@ def main() -> None:
         st.session_state.messages = []
         st.session_state.agent_logs = []
         st.session_state.flow = FlowState(main_phase=MainPhase.SETUP)
+        st.session_state.pop("_session_resume_handled_digest", None)
         st.rerun()
 
     st.subheader(block["title"] if block else "—")
