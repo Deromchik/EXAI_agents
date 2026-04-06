@@ -11,6 +11,8 @@ from typing import Any
 
 DEFAULT_SCORE_THRESHOLD = 0.5
 UNDERSTANDING_FLOOR = 0.7
+# Max assistant follow-up messages per corpus step (general/deepening/drilling) before advancing.
+MAX_CANONICAL_FOLLOW_UPS_PER_STEP = 3
 
 STEP_ORDER = ("general", "deepening", "drilling")
 
@@ -40,6 +42,7 @@ class FlowState:
     canonical_phase_index: int = 0
     canonical_phase_slot: int = 0
     canonical_step_index: int = 0
+    canonical_follow_ups_used: int = 0
     last_a16: dict[str, Any] | None = None
 
 

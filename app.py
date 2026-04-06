@@ -18,6 +18,8 @@ from content.research_loader import (
     validate_research_blocks,
 )
 from state_machine import (
+    DEFAULT_SCORE_THRESHOLD,
+    MAX_CANONICAL_FOLLOW_UPS_PER_STEP,
     FlowState,
     MainPhase,
     ScopingWait,
@@ -26,7 +28,6 @@ from state_machine import (
     decide_after_a16,
     get_canonical_step_key,
 )
-from state_machine import DEFAULT_SCORE_THRESHOLD
 from interview_session import (
     SESSION_EXPORT_FORMAT,
     apply_block_to_import_result,
@@ -120,6 +121,7 @@ def _reset_interview(block_id: int) -> None:
         canonical_phase_index=0,
         canonical_phase_slot=0,
         canonical_step_index=0,
+        canonical_follow_ups_used=0,
         last_a16=None,
     )
     st.session_state.messages = []
@@ -194,6 +196,7 @@ def _handle_scoping_user_message(user_text: str) -> None:
         flow.canonical_phase_slot = 0
         flow.canonical_phase_index = indices[0]
         flow.canonical_step_index = 0
+        flow.canonical_follow_ups_used = 0
         st.session_state.awaiting_canonical_reask = False
         flow.scoping_wait = None
         _append_assistant(
@@ -259,15 +262,21 @@ def _handle_canonical_user_message(user_text: str) -> None:
     )
     should = int(depth.get("should_reask") or 0)
     deep = float(depth.get("deep_knowledge_level") or 0)
-    if should == 1 and deep < 0.7:
+    if (
+        should == 1
+        and deep < 0.7
+        and flow.canonical_follow_ups_used < MAX_CANONICAL_FOLLOW_UPS_PER_STEP
+    ):
         fq = (depth.get("follow_up_question") or "").strip() or (
             "That was still quite general. Could you give one concrete example from your own practice?"
         )
         _append_assistant(fq)
         st.session_state.awaiting_canonical_reask = True
+        flow.canonical_follow_ups_used += 1
         return
 
     st.session_state.awaiting_canonical_reask = False
+    flow.canonical_follow_ups_used = 0
     sel = flow.selected_phase_indices or all_phase_indices(block)
     action, new_slot, new_pi, new_si = advance_canonical_position(
         block, sel, flow.canonical_phase_slot, si
