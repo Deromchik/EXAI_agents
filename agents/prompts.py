@@ -330,7 +330,6 @@ Role: Focus transition + thematic roadmap preview (not a planning negotiation)
 """
 
 
-
 # --- A11: closing --------------------------------------------------------------
 
 SYSTEM_A11 = f"""You are Agent A11 (FinalMessageAgent).

@@ -35,6 +35,14 @@
         {
           "phase_id": "1-6",
           "title": "Crisis management and communication under pressure"
+        },
+        {
+          "phase_id": "1-7",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "1-8",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     },
@@ -77,6 +85,14 @@
         {
           "phase_id": "2-7",
           "title": "Sales forecasting and pipeline discipline"
+        },
+        {
+          "phase_id": "2-8",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "2-9",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     },
@@ -111,6 +127,14 @@
         {
           "phase_id": "3-5",
           "title": "Sales-to-finance handoff: invoicing and revenue recognition"
+        },
+        {
+          "phase_id": "3-6",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "3-7",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     },
@@ -149,6 +173,14 @@
         {
           "phase_id": "4-6",
           "title": "Supplier quality and corrective action (SCAR and 8D)"
+        },
+        {
+          "phase_id": "4-7",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "4-8",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     },
@@ -187,6 +219,14 @@
         {
           "phase_id": "5-6",
           "title": "Supplier qualification and re-approval"
+        },
+        {
+          "phase_id": "5-7",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "5-8",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     },
@@ -225,6 +265,14 @@
         {
           "phase_id": "6-6",
           "title": "Returns, reverse logistics and material recovery"
+        },
+        {
+          "phase_id": "6-7",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "6-8",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     },
@@ -263,6 +311,14 @@
         {
           "phase_id": "7-6",
           "title": "ERP-driven production planning and material flow"
+        },
+        {
+          "phase_id": "7-7",
+          "title": "Failures and reversals: wrong calls, missed outcomes, and lessons learned"
+        },
+        {
+          "phase_id": "7-8",
+          "title": "Stakeholders, disagreement, and collaboration across functions"
         }
       ]
     }
