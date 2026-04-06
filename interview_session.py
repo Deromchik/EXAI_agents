@@ -32,7 +32,6 @@ def _flow_to_dict(flow: FlowState) -> dict[str, Any]:
         "canonical_phase_index": flow.canonical_phase_index,
         "canonical_phase_slot": flow.canonical_phase_slot,
         "canonical_step_index": flow.canonical_step_index,
-        "canonical_reask_used": flow.canonical_reask_used,
         "last_a16": flow.last_a16,
     }
 
@@ -48,7 +47,6 @@ def _flow_from_dict(d: dict[str, Any]) -> FlowState:
         canonical_phase_index=int(d.get("canonical_phase_index", 0)),
         canonical_phase_slot=int(d.get("canonical_phase_slot", 0)),
         canonical_step_index=int(d.get("canonical_step_index", 0)),
-        canonical_reask_used=bool(d.get("canonical_reask_used", False)),
         last_a16=d.get("last_a16"),
     )
 

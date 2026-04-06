@@ -47,8 +47,8 @@ system_prompt_builder.py у репозиторії не імпортується
        показати питання (заголовок фази + мітка кроку + текст від CANONICAL_Q)
        USER
        CANONICAL_DEPTH (JSON) — завжди, включно з відповіддю після follow-up (той самий canonical question у qtext)
-            +-- should_reask=1 і deep<0.7 і canonical_reask_used ще false: follow_up в чат; canonical_reask_used=true (не більше одного follow-up на крок)
-            +-- інакше: advance_canonical_position; awaiting_canonical_reask=false; canonical_reask_used=false
+            +-- should_reask=1 і deep<0.7: follow_up в чат (без ліміту кількості на крок — поки depth не відпустить далі)
+            +-- інакше: advance_canonical_position; awaiting_canonical_reask=false
        між фазами (next_phase): A22 (міст) + наступне питання CANONICAL_Q
        після останнього кроку: A11
 

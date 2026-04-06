@@ -120,7 +120,6 @@ def _reset_interview(block_id: int) -> None:
         canonical_phase_index=0,
         canonical_phase_slot=0,
         canonical_step_index=0,
-        canonical_reask_used=False,
         last_a16=None,
     )
     st.session_state.messages = []
@@ -195,7 +194,6 @@ def _handle_scoping_user_message(user_text: str) -> None:
         flow.canonical_phase_slot = 0
         flow.canonical_phase_index = indices[0]
         flow.canonical_step_index = 0
-        flow.canonical_reask_used = False
         st.session_state.awaiting_canonical_reask = False
         flow.scoping_wait = None
         _append_assistant(
@@ -261,17 +259,15 @@ def _handle_canonical_user_message(user_text: str) -> None:
     )
     should = int(depth.get("should_reask") or 0)
     deep = float(depth.get("deep_knowledge_level") or 0)
-    if should == 1 and not flow.canonical_reask_used and deep < 0.7:
+    if should == 1 and deep < 0.7:
         fq = (depth.get("follow_up_question") or "").strip() or (
             "That was still quite general. Could you give one concrete example from your own practice?"
         )
         _append_assistant(fq)
         st.session_state.awaiting_canonical_reask = True
-        flow.canonical_reask_used = True
         return
 
     st.session_state.awaiting_canonical_reask = False
-    flow.canonical_reask_used = False
     sel = flow.selected_phase_indices or all_phase_indices(block)
     action, new_slot, new_pi, new_si = advance_canonical_position(
         block, sel, flow.canonical_phase_slot, si

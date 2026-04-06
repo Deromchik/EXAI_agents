@@ -29,7 +29,6 @@ def test_session_export_import_roundtrip_canonical():
         canonical_phase_index=1,
         canonical_phase_slot=1,
         canonical_step_index=2,
-        canonical_reask_used=False,
         last_a16={"extracted_focus_area": "x", "extended_focus_area": "y"},
     )
     messages = [{"role": "assistant", "content": "Hi"}, {"role": "user", "content": "Hello"}]
@@ -87,7 +86,6 @@ def test_realign_phase_id_after_corpus_shift():
             "canonical_phase_index": 0,
             "canonical_phase_slot": 0,
             "canonical_step_index": 0,
-            "canonical_reask_used": False,
             "last_a16": None,
         },
         "opening_generated": True,

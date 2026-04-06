@@ -40,7 +40,6 @@ class FlowState:
     canonical_phase_index: int = 0
     canonical_phase_slot: int = 0
     canonical_step_index: int = 0
-    canonical_reask_used: bool = False
     last_a16: dict[str, Any] | None = None
 
 
