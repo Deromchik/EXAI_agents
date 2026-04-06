@@ -240,16 +240,6 @@ def _handle_canonical_user_message(user_text: str) -> None:
 
     _append_user(user_text)
 
-    if st.session_state.get("awaiting_canonical_reask"):
-        st.session_state.awaiting_canonical_reask = False
-        flow.canonical_reask_used = True
-        sel = flow.selected_phase_indices or all_phase_indices(block)
-        action, new_slot, new_pi, new_si = advance_canonical_position(
-            block, sel, flow.canonical_phase_slot, flow.canonical_step_index
-        )
-        _advance_canonical_display(block, action, new_slot, new_pi, new_si)
-        return
-
     pi, si = flow.canonical_phase_index, flow.canonical_step_index
     qtext = (st.session_state.get("current_canonical_question_plain") or "").strip()
     if not qtext:
@@ -277,8 +267,10 @@ def _handle_canonical_user_message(user_text: str) -> None:
         )
         _append_assistant(fq)
         st.session_state.awaiting_canonical_reask = True
+        flow.canonical_reask_used = True
         return
 
+    st.session_state.awaiting_canonical_reask = False
     flow.canonical_reask_used = False
     sel = flow.selected_phase_indices or all_phase_indices(block)
     action, new_slot, new_pi, new_si = advance_canonical_position(
